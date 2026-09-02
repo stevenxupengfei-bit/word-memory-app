@@ -1,12 +1,13 @@
-const CACHE = "memory-forest-v2";
+const CACHE = "memory-forest-v3";
 const APP_FILES = [
   "./",
   "./index.html",
-  "./styles.css?v=20260608-phone",
-  "./app.js?v=20260608-phone",
+  "./styles.css?v=20260902-import",
+  "./app.js?v=20260902-import",
   "./manifest.json",
   "./data/words.json",
   "./data/mnemonics.json",
+  "./data/examples.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];

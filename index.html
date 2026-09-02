@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <title>记忆森林 · 单词复习</title>
-    <link rel="stylesheet" href="styles.css?v=20260608-phone" />
+    <link rel="stylesheet" href="styles.css?v=20260902-import" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -133,7 +133,13 @@
               <p class="phonetic-line" id="phoneticLine">音标：载入中</p>
               <p class="forget-line" id="forgetLine">遗忘时间：载入中</p>
             </div>
-            <button id="speakBtn" class="icon-btn" title="朗读">🔊</button>
+            <div class="voice-controls">
+              <button id="speakBtn" class="speak-btn" title="朗读单词">🔊 女声朗读</button>
+              <label for="voiceSelect">朗读声线</label>
+              <select id="voiceSelect" aria-label="选择英文朗读声线">
+                <option value="">正在寻找自然女声…</option>
+              </select>
+            </div>
           </div>
 
           <div class="actions action-dock">
@@ -161,6 +167,14 @@
           <div class="meaning-strip">
             <p class="label" id="meaningLabel">中文释义</p>
             <p id="meaningText"></p>
+          </div>
+
+          <div class="example-strip" id="exampleBox">
+            <div class="example-head">
+              <p class="label">简单例句</p>
+              <button id="speakExampleBtn" type="button">🔊 听例句</button>
+            </div>
+            <p id="exampleText"></p>
           </div>
 
           <div class="mnemonic" id="mnemonicBox">
@@ -201,15 +215,34 @@
         <header class="import-head">
           <div>
             <h2>导入单词</h2>
-            <p>支持 CSV、JSON，或每行一个“单词 释义”。</p>
+            <p>支持拍照、相册图片、手写记录、CSV、JSON 和 TXT。</p>
           </div>
           <button id="closeImportBtn" class="icon-btn" title="关闭">×</button>
         </header>
 
-        <label class="file-picker">
-          <span>选择文件</span>
-          <input id="importFile" type="file" accept=".csv,.json,.txt,text/csv,application/json,text/plain" />
-        </label>
+        <div class="upload-grid">
+          <label class="upload-choice camera-choice">
+            <b>📷 拍照识别</b>
+            <span>用手机拍摄手写或打印单词</span>
+            <input id="importCamera" type="file" accept="image/*" capture="environment" />
+          </label>
+          <label class="upload-choice">
+            <b>🖼️ 相册或文件</b>
+            <span>可一次选择多张照片或文字文件</span>
+            <input id="importFile" type="file" multiple accept=".csv,.json,.txt,.jpg,.jpeg,.png,.webp,text/csv,application/json,text/plain,image/jpeg,image/png,image/webp" />
+          </label>
+        </div>
+
+        <section id="ocrPanel" class="ocr-panel hidden" aria-live="polite">
+          <img id="ocrPreview" alt="待识别的单词照片" />
+          <div>
+            <b id="ocrTitle">正在识别图片</b>
+            <p id="ocrStatus">首次使用需要联网加载识别组件。</p>
+            <div class="ocr-progress"><i id="ocrProgressBar"></i></div>
+          </div>
+        </section>
+
+        <p class="import-tip">识别结果会放到下方。请先校对，再点击“确认导入”；每行只写英文也可以，中文释义可稍后补充。</p>
 
         <textarea id="importText" class="import-text" rows="10" placeholder="示例：
 detain,拘留；留住；耽搁
@@ -226,6 +259,6 @@ theft 盗窃；偷；赃物
       </div>
     </section>
 
-    <script src="app.js?v=20260608-phone"></script>
+    <script src="app.js?v=20260902-import"></script>
   </body>
 </html>

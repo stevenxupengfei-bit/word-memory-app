@@ -4,6 +4,7 @@ const path = require("node:path");
 const root = path.resolve(__dirname, "..");
 const read = (file) => fs.readFileSync(path.join(root, file), "utf8");
 const words = JSON.parse(read("data/words.json"));
+const examples = JSON.parse(read("data/examples.json"));
 const manifest = JSON.parse(read("manifest.json"));
 const html = read("index.html");
 
@@ -16,12 +17,16 @@ for (const item of words) {
   const key = item.word.toLowerCase();
   if (seen.has(key)) throw new Error(`Duplicate word: ${item.word}`);
   seen.add(key);
+  if (!String(examples[item.word] || examples[key] || "").trim()) throw new Error(`${item.word} is missing a simple example`);
 }
 
 for (const file of ["app.js", "styles.css", "sw.js", "icons/icon-192.png", "icons/icon-512.png"]) {
   if (!fs.existsSync(path.join(root, file))) throw new Error(`Missing ${file}`);
 }
 if (!html.includes('type="email"') || !html.includes('rel="manifest"')) throw new Error("Email login or PWA manifest is not wired");
+for (const id of ["voiceSelect", "speakExampleBtn", "importCamera", "ocrPanel"]) {
+  if (!html.includes(`id="${id}"`)) throw new Error(`Missing UI control: ${id}`);
+}
 if (manifest.display !== "standalone" || manifest.icons.length < 2) throw new Error("Manifest is incomplete");
 
-console.log(`Validated ${words.length} unique vocabulary entries, email login UI, and PWA assets.`);
+console.log(`Validated ${words.length} vocabulary entries, simple examples, female voice UI, image import, and PWA assets.`);

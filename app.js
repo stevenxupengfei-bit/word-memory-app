@@ -3,6 +3,8 @@ const TOKEN_KEY = "word-memory-auth-token";
 const LOCAL_ACCOUNTS_KEY = "word-memory-local-accounts-v2";
 const LOCAL_WORDS_KEY = "word-memory-local-words-v2";
 const QUIZ_MODE_KEY = "word-memory-quiz-mode";
+const VOICE_KEY = "word-memory-voice-name";
+const OCR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js";
 const INTERVALS = [0, 1, 3, 7, 15, 30, 60];
 const DAILY_NEW_LIMIT = 12;
 const MASTER_LEVEL = 5;
@@ -12,6 +14,7 @@ let words = [];
 let baseWords = [];
 let customWords = [];
 let memoryNotes = {};
+let examples = {};
 let progress = {};
 let currentId = null;
 let filter = "due";
@@ -26,6 +29,8 @@ let saveTimer = null;
 let photoSalt = Number(localStorage.getItem("word-memory-photo-salt") || "1");
 let activePhotoKey = "";
 let activeInfoKey = "";
+let englishVoices = [];
+let ocrScriptPromise = null;
 const wordInfoCache = {};
 const STATIC_HOST = location.hostname.endsWith("github.io") || location.protocol === "file:";
 
@@ -36,14 +41,26 @@ const dayMs = 24 * 60 * 60 * 1000;
 async function boot() {
   baseWords = await loadWords();
   memoryNotes = await loadMemoryNotes();
+  examples = await loadExamples();
   rebuildWords();
   progress = {};
   bindEvents();
+  setupVoices();
   await restoreSession();
   prepareProgress();
   selectNext();
   render();
   window.setInterval(render, 60 * 1000);
+}
+
+async function loadExamples() {
+  try {
+    const response = await fetch("data/examples.json");
+    if (!response.ok) return {};
+    return await response.json();
+  } catch {
+    return {};
+  }
 }
 
 async function loadMemoryNotes() {
@@ -91,6 +108,7 @@ function bindEvents() {
   $("cancelImportBtn").addEventListener("click", closeImport);
   $("confirmImportBtn").addEventListener("click", importWords);
   $("importFile").addEventListener("change", readImportFile);
+  $("importCamera").addEventListener("change", readImportFile);
   $("refreshPhotoBtn").addEventListener("click", refreshPhoto);
   $("memoryPhoto").addEventListener("error", () => {
     const fallbackKey = $("memoryPhoto").dataset.photoKey || currentWord()?.id || "word";
@@ -106,6 +124,11 @@ function bindEvents() {
   $("goodBtn").addEventListener("click", () => grade("good"));
   $("easyBtn").addEventListener("click", () => grade("easy"));
   $("speakBtn").addEventListener("click", speakCurrent);
+  $("speakExampleBtn").addEventListener("click", speakExample);
+  $("voiceSelect").addEventListener("change", () => {
+    localStorage.setItem(VOICE_KEY, $("voiceSelect").value);
+    speakCurrent();
+  });
   $("searchInput").addEventListener("input", () => {
     listPage = 1;
     renderList();
@@ -623,6 +646,7 @@ function renderCard() {
   $("definitionText").textContent = reverse ? `${word.word}：${word.definition}` : word.definition;
   $("meaningLabel").textContent = reverse ? "作答方向" : "中文释义";
   $("meaningText").textContent = reverse ? "写出对应英文单词或短语。" : chineseMeaning(word.definition);
+  $("exampleText").textContent = exampleFor(word);
   $("mnemonicText").innerHTML = mnemonicFor(word).map((line) => `<span>${escapeHtml(line)}</span>`).join("");
   $("cardIndex").textContent = `${index || 1} / ${list.length || words.length}`;
   $("forgetLine").textContent = `遗忘时间：${forgetText(progress[word.id])}`;
@@ -630,6 +654,8 @@ function renderCard() {
   $("mnemonicBox").classList.toggle("hidden", reverse);
   $("memoryPhotoFigure").classList.toggle("hidden", reverse);
   $("speakBtn").disabled = reverse;
+  $("speakExampleBtn").disabled = reverse;
+  $("exampleBox").classList.toggle("hidden", reverse);
   document.querySelectorAll(".mode-btn").forEach((button) => button.classList.toggle("active", button.dataset.mode === quizMode));
   if (reverse) {
     $("phoneticLine").textContent = "音标：答完再看，避免提示词形。";
@@ -943,12 +969,68 @@ function affixHint(word) {
 
 function speakCurrent() {
   const word = currentWord();
-  if (!word || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(word.word);
+  if (!word) return;
+  speakText(word.word);
+}
+
+function speakExample() {
+  const word = currentWord();
+  if (!word) return;
+  speakText(exampleFor(word));
+}
+
+function speakText(text) {
+  if (!text || !("speechSynthesis" in window)) return;
+  const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "en-US";
-  utterance.rate = 0.85;
+  utterance.rate = 0.82;
+  utterance.pitch = 1.06;
+  const selected = englishVoices.find((voice) => voice.name === $("voiceSelect").value) || preferredVoice(englishVoices);
+  if (selected) {
+    utterance.voice = selected;
+    utterance.lang = selected.lang;
+  }
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
+}
+
+function setupVoices() {
+  if (!("speechSynthesis" in window)) {
+    $("voiceSelect").innerHTML = '<option value="">此设备不支持语音</option>';
+    $("voiceSelect").disabled = true;
+    return;
+  }
+  const refresh = () => {
+    englishVoices = speechSynthesis.getVoices().filter((voice) => /^en[-_]/i.test(voice.lang));
+    if (!englishVoices.length) return;
+    const saved = localStorage.getItem(VOICE_KEY);
+    const preferred = englishVoices.find((voice) => voice.name === saved) || preferredVoice(englishVoices);
+    const preferredNames = new Set(femaleVoiceCandidates(englishVoices).map((voice) => voice.name));
+    $("voiceSelect").innerHTML = englishVoices.map((voice) => {
+      const natural = preferredNames.has(voice.name) ? "自然女声 · " : "系统声线 · ";
+      return `<option value="${escapeHtml(voice.name)}">${natural}${escapeHtml(voice.name)} (${escapeHtml(voice.lang)})</option>`;
+    }).join("");
+    if (preferred) {
+      $("voiceSelect").value = preferred.name;
+      localStorage.setItem(VOICE_KEY, preferred.name);
+    }
+  };
+  refresh();
+  speechSynthesis.addEventListener?.("voiceschanged", refresh);
+}
+
+function femaleVoiceCandidates(voices) {
+  const names = /samantha|ava|allison|susan|karen|kathy|moira|tessa|fiona|flo|grandma|sandy|shelley|serena|zoe|victoria|martha|monica|salli|joanna|kendra|aria|jenny|emma|libby|sonia|zira/i;
+  return voices.filter((voice) => names.test(voice.name));
+}
+
+function preferredVoice(voices) {
+  const female = femaleVoiceCandidates(voices);
+  return female.find((voice) => /^en-US/i.test(voice.lang)) || female[0] || voices.find((voice) => /^en-US/i.test(voice.lang)) || voices[0];
+}
+
+function exampleFor(word) {
+  return examples[word.word] || examples[word.word.toLowerCase()] || word.example || `I am learning the word “${word.word}”.`;
 }
 
 function exportProgress() {
@@ -1146,6 +1228,9 @@ function openImport() {
   }
   $("importText").value = "";
   $("importFile").value = "";
+  $("importCamera").value = "";
+  $("ocrPanel").classList.add("hidden");
+  $("ocrProgressBar").style.width = "0%";
   setImportMessage("");
   $("importScreen").classList.remove("hidden");
   document.body.classList.add("locked");
@@ -1157,10 +1242,117 @@ function closeImport() {
 }
 
 async function readImportFile(event) {
-  const file = event.target.files?.[0];
-  if (!file) return;
-  $("importText").value = await file.text();
-  setImportMessage(`已读取文件：${file.name}`);
+  const files = [...(event.target.files || [])];
+  if (!files.length) return;
+  const images = files.filter((file) => file.type.startsWith("image/"));
+  const textFiles = files.filter((file) => !file.type.startsWith("image/"));
+  try {
+    const textParts = await Promise.all(textFiles.map((file) => file.text()));
+    if (textParts.length) appendImportText(textParts.join("\n"));
+    if (images.length) await recognizeImages(images);
+    if (!images.length) setImportMessage(`已读取 ${textFiles.length} 个文件，请校对后确认导入。`);
+  } catch (error) {
+    setImportMessage(`读取失败：${error.message}`);
+  }
+}
+
+function appendImportText(value) {
+  const clean = String(value || "").trim();
+  if (!clean) return;
+  $("importText").value = [$("importText").value.trim(), clean].filter(Boolean).join("\n");
+}
+
+async function recognizeImages(files) {
+  $("ocrPanel").classList.remove("hidden");
+  $("ocrTitle").textContent = `准备识别 ${files.length} 张图片`;
+  $("ocrStatus").textContent = "首次使用需要联网加载识别组件，请稍候。";
+  $("ocrProgressBar").style.width = "3%";
+  const previewUrl = URL.createObjectURL(files[0]);
+  let worker = null;
+  $("ocrPreview").src = previewUrl;
+  try {
+    await loadOcrLibrary();
+    worker = await window.Tesseract.createWorker("eng", 1, {
+      logger: (message) => updateOcrProgress(message),
+    });
+    await worker.setParameters({
+      tessedit_pageseg_mode: "6",
+      preserve_interword_spaces: "1",
+    });
+    const recognized = [];
+    for (let index = 0; index < files.length; index += 1) {
+      $("ocrTitle").textContent = `正在识别第 ${index + 1} / ${files.length} 张`;
+      const source = await prepareOcrImage(files[index]);
+      const result = await worker.recognize(source);
+      recognized.push(cleanOcrText(result.data.text));
+    }
+    const clean = recognized.filter(Boolean).join("\n");
+    if (!clean) throw new Error("未识别到英文单词，请换一张更清晰、光线均匀的照片");
+    appendImportText(clean);
+    $("ocrTitle").textContent = "图片识别完成";
+    $("ocrStatus").textContent = "请在下方逐行检查拼写；确认无误后再导入。";
+    $("ocrProgressBar").style.width = "100%";
+    setImportMessage(`已从 ${files.length} 张图片提取文字，请先校对。`);
+  } finally {
+    if (worker) await worker.terminate().catch(() => {});
+    URL.revokeObjectURL(previewUrl);
+  }
+}
+
+function loadOcrLibrary() {
+  if (window.Tesseract) return Promise.resolve();
+  if (ocrScriptPromise) return ocrScriptPromise;
+  ocrScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = OCR_SCRIPT_URL;
+    script.crossOrigin = "anonymous";
+    script.onload = resolve;
+    script.onerror = () => {
+      ocrScriptPromise = null;
+      reject(new Error("图片识别组件加载失败，请检查网络后重试，也可以直接粘贴文字"));
+    };
+    document.head.appendChild(script);
+  });
+  return ocrScriptPromise;
+}
+
+async function prepareOcrImage(file) {
+  if (!("createImageBitmap" in window)) return file;
+  try {
+    const image = await createImageBitmap(file);
+    const scale = Math.min(3, Math.max(1, 1800 / image.width));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.width * scale);
+    canvas.height = Math.round(image.height * scale);
+    const context = canvas.getContext("2d");
+    context.filter = "grayscale(1) contrast(1.65)";
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    image.close();
+    return canvas;
+  } catch {
+    return file;
+  }
+}
+
+function updateOcrProgress(message) {
+  const percent = Math.round((message.progress || 0) * 100);
+  const labels = {
+    "loading tesseract core": "正在加载识别引擎",
+    "initializing tesseract": "正在初始化识别引擎",
+    "loading language traineddata": "正在加载英文识别库",
+    "initializing api": "正在准备图片",
+    "recognizing text": "正在识别文字",
+  };
+  $("ocrStatus").textContent = `${labels[message.status] || "正在处理"}${percent ? ` · ${percent}%` : ""}`;
+  $("ocrProgressBar").style.width = `${Math.max(4, percent)}%`;
+}
+
+function cleanOcrText(text) {
+  return String(text || "")
+    .split(/\r?\n/)
+    .map((line) => line.replace(/[|]/g, "I").replace(/[^A-Za-z'’\-\s]/g, " ").replace(/\s+/g, " ").trim())
+    .filter((line) => /[A-Za-z]{2}/.test(line))
+    .join("\n");
 }
 
 async function importWords() {
@@ -1234,9 +1426,14 @@ function parseImportLine(line) {
   if (csv.length >= 2) {
     return { word: csv[0], definition: csv.slice(1).join("；") };
   }
-  const match = line.match(/^([A-Za-z][A-Za-z\s-]*[A-Za-z])[\s，,；;：:]+(.+)$/);
-  if (!match) return null;
-  return { word: match[1], definition: match[2] };
+  const marked = line.match(/^([A-Za-z][A-Za-z'’\s-]*[A-Za-z])[，；;：:]+(.+)$/);
+  if (marked) return { word: marked[1], definition: marked[2] };
+  const bilingual = line.match(/^([A-Za-z][A-Za-z'’\s-]*[A-Za-z])\s+([\u4e00-\u9fff].+)$/);
+  if (bilingual) return { word: bilingual[1], definition: bilingual[2] };
+  if (/^[A-Za-z][A-Za-z'’\s-]*[A-Za-z]$/.test(line)) {
+    return { word: line, definition: "待补充释义" };
+  }
+  return null;
 }
 
 function parseCsvLine(line) {
