@@ -31,6 +31,8 @@ let activePhotoKey = "";
 let activeInfoKey = "";
 let englishVoices = [];
 let ocrScriptPromise = null;
+const photoSearchCache = {};
+const shownPhotoUrls = new Set();
 const wordInfoCache = {};
 const STATIC_HOST = location.hostname.endsWith("github.io") || location.protocol === "file:";
 
@@ -112,6 +114,9 @@ function bindEvents() {
   $("refreshPhotoBtn").addEventListener("click", refreshPhoto);
   $("memoryPhoto").addEventListener("error", () => {
     const fallbackKey = $("memoryPhoto").dataset.photoKey || currentWord()?.id || "word";
+    if ($("memoryPhoto").dataset.fallback === "true") return;
+    $("memoryPhoto").dataset.fallback = "true";
+    $("photoCredit").classList.add("hidden");
     $("memoryPhoto").src = `https://picsum.photos/seed/${stableNumber(`${fallbackKey}-fallback`)}/900/560`;
   });
   $("memoryPhoto").addEventListener("load", () => {
@@ -1063,7 +1068,7 @@ function refreshPhoto() {
   renderMemoryPhoto(currentWord());
 }
 
-function renderMemoryPhoto(word) {
+async function renderMemoryPhoto(word) {
   if (!word) return;
   const scene = photoSceneFor(word);
   const photoKey = `${word.id}-${photoSalt}`;
@@ -1073,18 +1078,66 @@ function renderMemoryPhoto(word) {
   }
   activePhotoKey = photoKey;
   const lock = stableNumber(photoKey);
-  const tagPath = scene.tags.map((tag) => encodeURIComponent(tag)).join(",");
-  const imageUrl = `https://loremflickr.com/900/560/${tagPath}/all?lock=${lock}&word=${encodeURIComponent(word.word)}`;
   $("memoryPhoto").classList.add("loading");
   $("memoryPhoto").dataset.photoKey = photoKey;
+  $("memoryPhoto").dataset.fallback = "false";
   $("memoryPhoto").removeAttribute("src");
   $("memoryPhoto").alt = `${word.word} 的具象化照片`;
-  $("photoCaption").textContent = `${word.word} 照片联想：${scene.caption}`;
-  window.requestAnimationFrame(() => {
-    if ($("memoryPhoto").dataset.photoKey === photoKey) {
-      $("memoryPhoto").src = imageUrl;
-    }
-  });
+  $("photoCaption").textContent = `${word.word}：正在寻找不重复的相关图片…`;
+  $("photoCredit").classList.add("hidden");
+  try {
+    const photo = await findCommonsPhoto(scene.tags, lock);
+    if ($("memoryPhoto").dataset.photoKey !== photoKey) return;
+    shownPhotoUrls.add(photo.url);
+    $("memoryPhoto").src = photo.url;
+    $("photoCaption").textContent = `${word.word} 照片联想：${scene.caption}`;
+    $("photoCredit").href = photo.pageUrl;
+    $("photoCredit").textContent = `图片来源：Wikimedia Commons · ${photo.title.replace(/^File:/, "")}`;
+    $("photoCredit").classList.remove("hidden");
+  } catch {
+    if ($("memoryPhoto").dataset.photoKey !== photoKey) return;
+    $("memoryPhoto").dataset.fallback = "true";
+    $("memoryPhoto").src = `https://picsum.photos/seed/${stableNumber(`${photoKey}-fallback`)}/900/560`;
+    $("photoCaption").textContent = `${word.word}：相关图片暂时不可用，已换为不重复的备用图。`;
+  }
+}
+
+async function findCommonsPhoto(tags, lock) {
+  const query = `${tags.slice(0, 3).join(" ")} filetype:bitmap`;
+  if (!photoSearchCache[query]) {
+    const params = new URLSearchParams({
+      action: "query",
+      format: "json",
+      origin: "*",
+      generator: "search",
+      gsrsearch: query,
+      gsrnamespace: "6",
+      gsrlimit: "20",
+      prop: "imageinfo",
+      iiprop: "url|mime",
+      iiurlwidth: "960",
+    });
+    const response = await fetch(`https://commons.wikimedia.org/w/api.php?${params}`);
+    if (!response.ok) throw new Error("图片搜索暂时不可用");
+    const payload = await response.json();
+    photoSearchCache[query] = Object.values(payload.query?.pages || {})
+      .map((page) => ({
+        title: page.title || "Wikimedia Commons",
+        url: page.imageinfo?.[0]?.thumburl || page.imageinfo?.[0]?.url,
+        pageUrl: page.imageinfo?.[0]?.descriptionurl || `https://commons.wikimedia.org/?curid=${page.pageid}`,
+        mime: page.imageinfo?.[0]?.mime || "",
+      }))
+      .filter((photo) => photo.url && /^image\/(jpeg|png|webp)$/i.test(photo.mime) && /\.(jpe?g|png|webp)$/i.test(photo.title))
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
+  const photos = photoSearchCache[query];
+  if (!photos?.length) throw new Error("没有找到相关图片");
+  const start = lock % photos.length;
+  for (let offset = 0; offset < photos.length; offset += 1) {
+    const photo = photos[(start + offset) % photos.length];
+    if (!shownPhotoUrls.has(photo.url)) return photo;
+  }
+  return photos[start];
 }
 
 async function renderWordInfo(word) {

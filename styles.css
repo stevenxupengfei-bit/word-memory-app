@@ -752,6 +752,16 @@ h2 {
   min-width: 0;
 }
 
+.photo-credit {
+  display: block;
+  overflow: hidden;
+  margin-top: 5px;
+  color: var(--accent-strong);
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 .memory-photo figcaption button {
   flex: none;
   min-height: 34px;
