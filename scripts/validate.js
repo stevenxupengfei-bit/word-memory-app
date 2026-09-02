@@ -31,6 +31,9 @@ for (const id of ["voiceSelect", "speakExampleBtn", "importCamera", "ocrPanel", 
 if (!read("app.js").includes('api("/api/change-password"') || !read("server.js").includes('url.pathname === "/api/change-password"')) {
   throw new Error("Password change flow is incomplete");
 }
+if (!read("app.js").includes("waqwarfyocovhaxkdxoy.supabase.co") || !read("app.js").includes("writeCloudData")) {
+  throw new Error("Supabase cloud sync is incomplete");
+}
 if (manifest.display !== "standalone" || manifest.icons.length < 2) throw new Error("Manifest is incomplete");
 
 console.log(`Validated ${words.length} vocabulary entries, simple examples, female voice UI, image import, password controls, and PWA assets.`);

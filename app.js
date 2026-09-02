@@ -1,10 +1,14 @@
 const STORE_KEY = "youdao-word-memory-progress-v1";
 const TOKEN_KEY = "word-memory-auth-token";
+const REFRESH_TOKEN_KEY = "word-memory-refresh-token";
 const LOCAL_ACCOUNTS_KEY = "word-memory-local-accounts-v2";
 const LOCAL_WORDS_KEY = "word-memory-local-words-v2";
 const QUIZ_MODE_KEY = "word-memory-quiz-mode";
 const VOICE_KEY = "word-memory-voice-name";
 const OCR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js";
+const SUPABASE_URL = "https://waqwarfyocovhaxkdxoy.supabase.co";
+const SUPABASE_KEY = "sb_publishable_8BTKvF039SJk1GphJBw_3A_ARhoWnii";
+const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_KEY);
 const INTERVALS = [0, 1, 3, 7, 15, 30, 60];
 const DAILY_NEW_LIMIT = 12;
 const MASTER_LEVEL = 5;
@@ -172,6 +176,30 @@ function setQuizMode(mode) {
 }
 
 async function restoreSession() {
+  if (SUPABASE_ENABLED) {
+    if (token.startsWith("local:")) {
+      token = "";
+      localStorage.removeItem(TOKEN_KEY);
+    }
+    if (!token) {
+      setAuthVisible(true);
+      return;
+    }
+    try {
+      let user;
+      try {
+        user = await supabaseRequest("/auth/v1/user");
+      } catch {
+        await refreshSupabaseSession();
+        user = await supabaseRequest("/auth/v1/user");
+      }
+      await enterCloudSession(user);
+    } catch {
+      clearSessionTokens();
+      setAuthVisible(true);
+    }
+    return;
+  }
   if (!token) {
     setAuthVisible(true);
     return;
@@ -312,7 +340,22 @@ async function changePassword(event) {
   const submitButton = $("changePasswordForm").querySelector("button[type='submit']");
   submitButton.disabled = true;
   try {
-    if (STATIC_HOST) {
+    if (SUPABASE_ENABLED) {
+      const session = await supabaseRequest("/auth/v1/token?grant_type=password", {
+        method: "POST",
+        body: { email, password: currentPassword },
+        auth: false,
+      });
+      await supabaseRequest("/auth/v1/user", {
+        method: "PUT",
+        body: { password: newPassword },
+        accessToken: session.access_token,
+      });
+      await supabaseRequest("/auth/v1/logout", {
+        method: "POST",
+        accessToken: session.access_token,
+      }).catch(() => {});
+    } else if (STATIC_HOST) {
       const accounts = readLocalAccounts();
       const currentHash = await passwordDigest(email, currentPassword);
       if (!accounts[email] || accounts[email].passwordHash !== currentHash) {
@@ -356,6 +399,31 @@ async function authenticate(endpoint, mode = "login") {
   }
 
   try {
+    if (SUPABASE_ENABLED) {
+      if (mode === "register") {
+        const result = await supabaseRequest("/auth/v1/signup", {
+          method: "POST",
+          body: { email, password },
+          auth: false,
+        });
+        if (!result.access_token) {
+          authMode = "login";
+          renderAuthMode();
+          $("authMessage").classList.add("info");
+          setAuthMessage("注册成功。请先到邮箱点击确认链接，然后回来登录。");
+          return;
+        }
+        await acceptSupabaseSession(result);
+        return;
+      }
+      const result = await supabaseRequest("/auth/v1/token?grant_type=password", {
+        method: "POST",
+        body: { email, password },
+        auth: false,
+      });
+      await acceptSupabaseSession(result);
+      return;
+    }
     if (STATIC_HOST) {
       await authenticateLocally(email, password, mode);
       return;
@@ -439,6 +507,92 @@ async function enterSession(result) {
   render();
 }
 
+async function acceptSupabaseSession(session) {
+  token = session.access_token;
+  localStorage.setItem(TOKEN_KEY, token);
+  if (session.refresh_token) localStorage.setItem(REFRESH_TOKEN_KEY, session.refresh_token);
+  await enterCloudSession(session.user);
+}
+
+async function enterCloudSession(user) {
+  const email = String(user.email || "").toLowerCase();
+  const cloud = await readCloudData(user.id);
+  const hasCloudData = Boolean(cloud);
+  const localProgress = readAccountProgress(email);
+  const localWords = readLocalWords(email);
+  await enterSession({
+    token,
+    user: { id: user.id, name: email, email, cloud: true },
+    progress: hasCloudData ? cloud.progress : localProgress,
+    words: hasCloudData ? cloud.custom_words : localWords,
+  });
+}
+
+async function refreshSupabaseSession() {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) throw new Error("登录已过期，请重新登录。");
+  const session = await supabaseRequest("/auth/v1/token?grant_type=refresh_token", {
+    method: "POST",
+    body: { refresh_token: refreshToken },
+    auth: false,
+  });
+  token = session.access_token;
+  localStorage.setItem(TOKEN_KEY, token);
+  if (session.refresh_token) localStorage.setItem(REFRESH_TOKEN_KEY, session.refresh_token);
+  return session;
+}
+
+async function readCloudData(userId) {
+  const rows = await supabaseRequest(`/rest/v1/user_data?user_id=eq.${encodeURIComponent(userId)}&select=progress,custom_words`);
+  return Array.isArray(rows) ? rows[0] || null : null;
+}
+
+async function writeCloudData() {
+  if (!currentUser?.cloud) return;
+  await supabaseRequest("/rest/v1/user_data?on_conflict=user_id", {
+    method: "POST",
+    headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+    body: {
+      user_id: currentUser.id,
+      progress,
+      custom_words: customWords,
+      updated_at: new Date().toISOString(),
+    },
+  });
+}
+
+async function supabaseRequest(path, options = {}) {
+  const headers = {
+    apikey: SUPABASE_KEY,
+    "Content-Type": "application/json",
+    ...(options.headers || {}),
+  };
+  const accessToken = options.accessToken || token;
+  if (options.auth !== false && accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  const response = await fetch(`${SUPABASE_URL}${path}`, {
+    method: options.method || "GET",
+    headers,
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const raw = payload.msg || payload.error_description || payload.message || payload.error || "云端请求失败";
+    const messages = {
+      "Invalid login credentials": "邮箱或密码不正确。",
+      "User already registered": "这个邮箱已经注册，请直接登录。",
+      "Email not confirmed": "请先到邮箱点击确认链接，再回来登录。",
+    };
+    throw new Error(messages[raw] || raw);
+  }
+  return payload;
+}
+
+function clearSessionTokens() {
+  token = "";
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+}
+
 async function sendCode() {
   const phone = $("authPhone").value.trim();
   const purpose = authMode === "register" ? "register" : authMode === "reset" ? "reset" : "login";
@@ -473,11 +627,13 @@ function updateCodeButton() {
   $("sendCodeBtn").textContent = codeSeconds > 0 ? `${codeSeconds}s` : "获取验证码";
 }
 
-function logout() {
+async function logout() {
   closeChangePassword();
-  token = "";
+  if (SUPABASE_ENABLED && token) {
+    await supabaseRequest("/auth/v1/logout", { method: "POST" }).catch(() => {});
+  }
+  clearSessionTokens();
   currentUser = null;
-  localStorage.removeItem(TOKEN_KEY);
   authMode = "login";
   renderAuthMode();
   setAuthVisible(true);
@@ -968,10 +1124,14 @@ function queueRemoteSave() {
 async function saveRemoteNow() {
   if (!token || currentUser?.local) return;
   try {
-    await api("/api/progress", {
-      method: "PUT",
-      body: { progress },
-    });
+    if (currentUser?.cloud) {
+      await writeCloudData();
+    } else {
+      await api("/api/progress", {
+        method: "PUT",
+        body: { progress },
+      });
+    }
   } catch (error) {
     console.warn("Progress sync failed:", error.message);
   }
@@ -1520,7 +1680,7 @@ async function importWords() {
   }
 
   try {
-    if (currentUser?.local) {
+    if (currentUser?.local || currentUser?.cloud) {
       const email = currentUser.email.toLowerCase();
       const stamped = imported.map((item, index) => ({
         ...item,
@@ -1532,6 +1692,7 @@ async function importWords() {
       rebuildWords();
       prepareProgress();
       saveLocal();
+      if (currentUser.cloud) await writeCloudData();
       selectNext();
       render();
       setImportMessage(`已导入 ${stamped.length} 个单词。`);
