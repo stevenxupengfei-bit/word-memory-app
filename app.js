@@ -117,6 +117,7 @@ function bindEvents() {
   $("changePasswordForm").addEventListener("submit", changePassword);
   $("logoutBtn").addEventListener("click", logout);
   $("importBtn").addEventListener("click", openImport);
+  $("mobileImportBtn").addEventListener("click", openImport);
   $("closeImportBtn").addEventListener("click", closeImport);
   $("cancelImportBtn").addEventListener("click", closeImport);
   $("confirmImportBtn").addEventListener("click", importWords);
