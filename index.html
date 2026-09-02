@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <title>记忆森林 · 单词复习</title>
-    <link rel="stylesheet" href="styles.css?v=20260902-photos" />
+    <link rel="stylesheet" href="styles.css?v=20260902-account" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -65,11 +65,6 @@
           </div>
         </div>
 
-        <div class="user-bar">
-          <span id="userName">未登录</span>
-          <button id="logoutBtn" class="ghost">退出</button>
-        </div>
-
         <section class="stats" aria-label="学习统计">
           <div><b id="dueCount">0</b><span>今日任务</span></div>
           <div><b id="learnedCount">0</b><span>已见过</span></div>
@@ -118,8 +113,14 @@
             <p class="eyebrow" id="queueLabel">今日队列</p>
             <h2 id="wordTitle">准备开始</h2>
           </div>
-          <div class="pace">
-            <span id="cardIndex">0 / 0</span>
+          <div class="top-actions">
+            <div class="pace">
+              <span id="cardIndex">0 / 0</span>
+            </div>
+            <div class="user-bar top-user-bar" aria-label="账号信息">
+              <span id="userName">未登录</span>
+              <button id="logoutBtn" class="ghost">退出</button>
+            </div>
           </div>
         </header>
 
