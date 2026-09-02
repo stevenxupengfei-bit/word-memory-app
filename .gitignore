@@ -1,0 +1,16 @@
+data/users.json
+data/anki_cards.csv
+data/words.csv
+node_modules/
+.DS_Store
+.vscode/
+project.config.json
+project.private.config.json
+miniprogram/
+109词背会学习包.md
+今日背词报告.md
+学习计划.md
+scripts/extract_words.py
+scripts/generate_anki_cards.js
+scripts/generate_daily_report.js
+scripts/generate_study_pack.js

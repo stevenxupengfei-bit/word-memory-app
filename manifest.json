@@ -1,0 +1,14 @@
+{
+  "name": "记忆森林 · 单词复习",
+  "short_name": "记忆森林",
+  "description": "按遗忘曲线安排复习的家庭英语单词学习工具",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f0e9",
+  "theme_color": "#315c4b",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#315c4b" />
+    <meta name="description" content="家庭共享的遗忘曲线英语单词学习工具" />
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <title>记忆森林 · 单词复习</title>
+    <link rel="stylesheet" href="styles.css?v=20260608-phone" />
+  </head>
+  <body>
+    <section class="auth-screen" id="authScreen">
+      <div class="auth-panel">
+        <div class="brand auth-brand">
+          <span class="mark">W</span>
+          <div>
+            <h1>记忆森林</h1>
+            <p>你和孩子各用一个邮箱，学习进度互不混淆</p>
+          </div>
+        </div>
+
+        <form id="authForm" class="auth-form">
+          <div class="auth-tabs" aria-label="登录方式">
+            <button class="auth-tab active" data-auth-mode="login" type="button">邮箱登录</button>
+            <button class="auth-tab" data-auth-mode="register" type="button">创建账户</button>
+          </div>
+
+          <label id="nameField">
+            <span>邮箱</span>
+            <input id="authName" type="email" inputmode="email" autocomplete="username" maxlength="120" placeholder="name@example.com" required />
+          </label>
+          <label id="phoneField" class="hidden">
+            <span>手机号</span>
+            <input id="authPhone" inputmode="numeric" autocomplete="tel" maxlength="11" />
+          </label>
+          <label id="codeField" class="hidden">
+            <span>验证码</span>
+            <div class="code-row">
+              <input id="authCode" inputmode="numeric" maxlength="6" />
+              <button id="sendCodeBtn" type="button">获取验证码</button>
+            </div>
+          </label>
+          <label>
+            <span id="passwordLabel">密码</span>
+            <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required />
+          </label>
+          <p id="authMessage" class="auth-message"></p>
+          <p class="auth-privacy">GitHub 网页版会把每个邮箱的学习记录保存在当前设备，不会上传密码。可随时导出进度备份。</p>
+          <div class="auth-actions">
+            <button id="loginBtn" class="primary" type="submit">登录</button>
+            <button id="registerBtn" type="button">注册新账号</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="mark">W</span>
+          <div>
+            <h1>记忆森林</h1>
+            <p id="deckMeta">载入中</p>
+          </div>
+        </div>
+
+        <div class="user-bar">
+          <span id="userName">未登录</span>
+          <button id="logoutBtn" class="ghost">退出</button>
+        </div>
+
+        <section class="stats" aria-label="学习统计">
+          <div><b id="dueCount">0</b><span>今日任务</span></div>
+          <div><b id="learnedCount">0</b><span>已见过</span></div>
+          <div><b id="masteredCount">0</b><span>稳定</span></div>
+        </section>
+
+        <section class="coach-card" aria-label="今日背词计划">
+          <p id="coachToday">正在生成今日计划</p>
+          <small id="coachProgress">先完成今日队列，再加新词。</small>
+          <div class="daily-progress" aria-label="今日完成度">
+            <span id="dailyProgressText">今日完成 0 / 0</span>
+            <div><i id="dailyProgressBar"></i></div>
+          </div>
+        </section>
+
+        <div class="filters">
+          <button class="tab active" data-filter="due">今日</button>
+          <button class="tab" data-filter="new">新词</button>
+          <button class="tab" data-filter="weak">薄弱</button>
+          <button class="tab" data-filter="all">全部</button>
+        </div>
+
+        <label class="search">
+          <span>搜索</span>
+          <input id="searchInput" type="search" autocomplete="off" />
+        </label>
+
+        <ol id="wordList" class="word-list"></ol>
+
+        <div class="list-pager" aria-label="单词列表翻页">
+          <button id="prevPageBtn" type="button">上一页</button>
+          <span id="pageInfo">1 / 1</span>
+          <button id="nextPageBtn" type="button">下一页</button>
+        </div>
+
+        <div class="side-actions">
+          <button id="importBtn">导入单词</button>
+          <button id="exportBtn">导出进度</button>
+          <button id="resetBtn" class="ghost">重置</button>
+        </div>
+      </aside>
+
+      <main class="study">
+        <header class="study-top">
+          <div>
+            <p class="eyebrow" id="queueLabel">今日队列</p>
+            <h2 id="wordTitle">准备开始</h2>
+          </div>
+          <div class="pace">
+            <span id="cardIndex">0 / 0</span>
+          </div>
+        </header>
+
+        <section class="card" id="studyCard" aria-live="polite">
+          <div class="word-row">
+            <div>
+              <p class="label" id="promptLabel">单词</p>
+              <strong id="currentWord">请选择一个词</strong>
+              <p class="part-line" id="partLine">词性：载入中</p>
+              <p class="phonetic-line" id="phoneticLine">音标：载入中</p>
+              <p class="forget-line" id="forgetLine">遗忘时间：载入中</p>
+            </div>
+            <button id="speakBtn" class="icon-btn" title="朗读">🔊</button>
+          </div>
+
+          <div class="actions action-dock">
+            <button id="checkBtn">自查</button>
+            <button id="showBtn">显示释义</button>
+            <button id="againBtn" class="danger">忘了</button>
+            <button id="hardBtn">模糊</button>
+            <button id="goodBtn" class="primary">记住</button>
+            <button id="easyBtn">很熟</button>
+          </div>
+
+          <figure class="memory-photo" id="memoryPhotoFigure">
+            <img id="memoryPhoto" alt="单词记忆照片" />
+            <figcaption>
+              <span id="photoCaption">正在匹配具象化照片</span>
+              <button id="refreshPhotoBtn" type="button">换一张</button>
+            </figcaption>
+          </figure>
+
+          <div class="definition hidden" id="definitionBox">
+            <p class="label">中文释义</p>
+            <p id="definitionText"></p>
+          </div>
+
+          <div class="meaning-strip">
+            <p class="label" id="meaningLabel">中文释义</p>
+            <p id="meaningText"></p>
+          </div>
+
+          <div class="mnemonic" id="mnemonicBox">
+            <p class="label">联想线索</p>
+            <div id="mnemonicText"></div>
+          </div>
+
+          <div class="recall-routine">
+            <p class="label">主动回忆</p>
+            <ol>
+              <li>先看单词，读出声音。</li>
+              <li>闭眼重放联想画面，说出中文核心义。</li>
+              <li>默写后再点“显示释义”，按真实感觉评分。</li>
+            </ol>
+          </div>
+
+          <div class="quiz">
+            <div class="quiz-mode" aria-label="测验方向">
+              <button class="mode-btn active" data-mode="forward" type="button">英译中</button>
+              <button class="mode-btn" data-mode="reverse" type="button">中译英</button>
+            </div>
+            <label for="answerInput">默写/释义</label>
+            <textarea id="answerInput" rows="3" placeholder="写下你想到的意思、词根或例句"></textarea>
+            <p id="quizFeedback" class="quiz-feedback">先默写，再自查。</p>
+          </div>
+
+        </section>
+
+        <section class="timeline" aria-label="复习节奏">
+          <h3>下次复习</h3>
+          <div id="reviewPlan" class="review-plan"></div>
+        </section>
+      </main>
+    </div>
+
+    <section class="import-screen hidden" id="importScreen">
+      <div class="import-panel">
+        <header class="import-head">
+          <div>
+            <h2>导入单词</h2>
+            <p>支持 CSV、JSON，或每行一个“单词 释义”。</p>
+          </div>
+          <button id="closeImportBtn" class="icon-btn" title="关闭">×</button>
+        </header>
+
+        <label class="file-picker">
+          <span>选择文件</span>
+          <input id="importFile" type="file" accept=".csv,.json,.txt,text/csv,application/json,text/plain" />
+        </label>
+
+        <textarea id="importText" class="import-text" rows="10" placeholder="示例：
+detain,拘留；留住；耽搁
+theft 盗窃；偷；赃物
+[
+  { &quot;word&quot;: &quot;relief&quot;, &quot;definition&quot;: &quot;宽慰；缓解&quot; }
+]"></textarea>
+
+        <p id="importMessage" class="import-message"></p>
+        <div class="import-actions">
+          <button id="confirmImportBtn" class="primary">确认导入</button>
+          <button id="cancelImportBtn">取消</button>
+        </div>
+      </div>
+    </section>
+
+    <script src="app.js?v=20260608-phone"></script>
+  </body>
+</html>
