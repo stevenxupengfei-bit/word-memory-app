@@ -368,6 +368,29 @@ async function handleApi(req, res, url) {
     return json(res, 200, { token: createToken(user.id), user: publicUser(user), progress: user.progress || {}, words: publicWords(user) });
   }
 
+  if (req.method === "POST" && url.pathname === "/api/change-password") {
+    const user = await currentUser(req);
+    if (!user) return json(res, 401, { error: "请先登录。" });
+    const body = await readJson(req);
+    if (!verifyPassword(String(body.currentPassword || ""), user)) {
+      return json(res, 401, { error: "当前密码不正确。" });
+    }
+    const passwordCheck = validatePassword(body.newPassword);
+    if (passwordCheck.error) return json(res, 400, { error: passwordCheck.error });
+    if (String(body.currentPassword) === passwordCheck.password) {
+      return json(res, 400, { error: "新密码不能与当前密码相同。" });
+    }
+    const store = await readUsers();
+    const target = store.users.find((item) => item.id === user.id);
+    if (!target) return json(res, 404, { error: "账号不存在。" });
+    const password = hashPassword(passwordCheck.password);
+    target.salt = password.salt;
+    target.passwordHash = password.hash;
+    target.updatedAt = new Date().toISOString();
+    await writeUsers(store);
+    return json(res, 200, { ok: true });
+  }
+
   if (req.method === "GET" && url.pathname === "/api/me") {
     const user = await currentUser(req);
     if (!user) return json(res, 401, { error: "请先登录。" });

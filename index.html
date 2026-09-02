@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <title>记忆森林 · 单词复习</title>
-    <link rel="stylesheet" href="styles.css?v=20260902-account" />
+    <link rel="stylesheet" href="styles.css?v=20260902-password" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -43,7 +43,10 @@
           </label>
           <label>
             <span id="passwordLabel">密码</span>
-            <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required />
+            <div class="password-input-row">
+              <input id="authPassword" type="password" autocomplete="current-password" minlength="6" required />
+              <button class="password-toggle" type="button" data-password-target="authPassword" aria-label="显示密码">显示</button>
+            </div>
           </label>
           <p id="authMessage" class="auth-message"></p>
           <p class="auth-privacy">GitHub 网页版会把每个邮箱的学习记录保存在当前设备，不会上传密码。可随时导出进度备份。</p>
@@ -119,6 +122,7 @@
             </div>
             <div class="user-bar top-user-bar" aria-label="账号信息">
               <span id="userName">未登录</span>
+              <button id="changePasswordBtn">修改密码</button>
               <button id="logoutBtn" class="ghost">退出</button>
             </div>
           </div>
@@ -259,6 +263,46 @@ theft 盗窃；偷；赃物
       </div>
     </section>
 
-    <script src="app.js?v=20260902-photos"></script>
+    <section class="password-screen hidden" id="passwordScreen">
+      <form class="password-panel" id="changePasswordForm">
+        <header class="import-head">
+          <div>
+            <h2>修改密码</h2>
+            <p>修改当前账号的登录密码。</p>
+          </div>
+          <button id="closePasswordBtn" class="icon-btn" type="button" title="关闭">×</button>
+        </header>
+
+        <label>
+          <span>当前密码</span>
+          <div class="password-input-row">
+            <input id="currentPassword" type="password" autocomplete="current-password" minlength="6" required />
+            <button class="password-toggle" type="button" data-password-target="currentPassword" aria-label="显示当前密码">显示</button>
+          </div>
+        </label>
+        <label>
+          <span>新密码</span>
+          <div class="password-input-row">
+            <input id="newPassword" type="password" autocomplete="new-password" minlength="6" required />
+            <button class="password-toggle" type="button" data-password-target="newPassword" aria-label="显示新密码">显示</button>
+          </div>
+        </label>
+        <label>
+          <span>再次输入新密码</span>
+          <div class="password-input-row">
+            <input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" required />
+            <button class="password-toggle" type="button" data-password-target="confirmPassword" aria-label="显示确认密码">显示</button>
+          </div>
+        </label>
+
+        <p id="passwordMessage" class="import-message"></p>
+        <div class="import-actions">
+          <button class="primary" type="submit">保存新密码</button>
+          <button id="cancelPasswordBtn" type="button">取消</button>
+        </div>
+      </form>
+    </section>
+
+    <script src="app.js?v=20260902-password"></script>
   </body>
 </html>

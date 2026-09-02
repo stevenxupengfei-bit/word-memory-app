@@ -104,6 +104,13 @@ function bindEvents() {
   document.querySelectorAll(".auth-tab").forEach((button) => {
     button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
   });
+  document.querySelectorAll(".password-toggle").forEach((button) => {
+    button.addEventListener("click", () => togglePassword(button));
+  });
+  $("changePasswordBtn").addEventListener("click", openChangePassword);
+  $("closePasswordBtn").addEventListener("click", closeChangePassword);
+  $("cancelPasswordBtn").addEventListener("click", closeChangePassword);
+  $("changePasswordForm").addEventListener("submit", changePassword);
   $("logoutBtn").addEventListener("click", logout);
   $("importBtn").addEventListener("click", openImport);
   $("closeImportBtn").addEventListener("click", closeImport);
@@ -242,6 +249,97 @@ function renderAuthMode() {
     reset: "用手机号验证码验证身份，然后设置新密码。"
   };
   setAuthMessage(messages[authMode] || "");
+  resetPasswordVisibility($("authForm"));
+}
+
+function togglePassword(button) {
+  const input = $(button.dataset.passwordTarget);
+  if (!input) return;
+  const showing = input.type === "password";
+  input.type = showing ? "text" : "password";
+  button.textContent = showing ? "隐藏" : "显示";
+  button.setAttribute("aria-label", showing ? "隐藏密码" : "显示密码");
+}
+
+function resetPasswordVisibility(scope = document) {
+  scope.querySelectorAll("input[type='text'][autocomplete*='password']").forEach((input) => {
+    input.type = "password";
+  });
+  scope.querySelectorAll(".password-toggle").forEach((button) => {
+    button.textContent = "显示";
+    button.setAttribute("aria-label", "显示密码");
+  });
+}
+
+function openChangePassword() {
+  if (!currentUser) return;
+  $("changePasswordForm").reset();
+  resetPasswordVisibility($("changePasswordForm"));
+  $("passwordMessage").textContent = "";
+  $("passwordScreen").classList.remove("hidden");
+  document.body.classList.add("locked");
+  $("currentPassword").focus();
+}
+
+function closeChangePassword() {
+  $("passwordScreen").classList.add("hidden");
+  $("changePasswordForm").reset();
+  resetPasswordVisibility($("changePasswordForm"));
+  document.body.classList.toggle("locked", !$("authScreen").classList.contains("hidden") || !$("importScreen").classList.contains("hidden"));
+}
+
+async function changePassword(event) {
+  event.preventDefault();
+  const currentPassword = $("currentPassword").value;
+  const newPassword = $("newPassword").value;
+  const confirmPassword = $("confirmPassword").value;
+  const message = $("passwordMessage");
+  message.classList.remove("success");
+
+  if (currentPassword.length < 6 || newPassword.length < 6) {
+    message.textContent = "密码至少 6 位。";
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    message.textContent = "两次输入的新密码不一致。";
+    return;
+  }
+  if (newPassword === currentPassword) {
+    message.textContent = "新密码不能与当前密码相同。";
+    return;
+  }
+
+  const submitButton = $("changePasswordForm").querySelector("button[type='submit']");
+  submitButton.disabled = true;
+  try {
+    if (currentUser.local || STATIC_HOST) {
+      const email = String(currentUser.email || currentUser.name).trim().toLowerCase();
+      const accounts = readLocalAccounts();
+      const currentHash = await passwordDigest(email, currentPassword);
+      if (!accounts[email] || accounts[email].passwordHash !== currentHash) {
+        throw new Error("当前密码不正确。");
+      }
+      accounts[email] = {
+        ...accounts[email],
+        passwordHash: await passwordDigest(email, newPassword),
+        updatedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(LOCAL_ACCOUNTS_KEY, JSON.stringify(accounts));
+    } else {
+      await api("/api/change-password", {
+        method: "POST",
+        body: { currentPassword, newPassword },
+      });
+    }
+    $("changePasswordForm").reset();
+    resetPasswordVisibility($("changePasswordForm"));
+    message.classList.add("success");
+    message.textContent = "密码修改成功，下次登录请使用新密码。";
+  } catch (error) {
+    message.textContent = error.message;
+  } finally {
+    submitButton.disabled = false;
+  }
 }
 
 async function authenticate(endpoint, mode = "login") {
@@ -374,6 +472,7 @@ function updateCodeButton() {
 }
 
 function logout() {
+  closeChangePassword();
   token = "";
   currentUser = null;
   localStorage.removeItem(TOKEN_KEY);
