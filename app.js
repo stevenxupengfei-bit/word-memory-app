@@ -9,6 +9,7 @@ const OCR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tessera
 const SUPABASE_URL = "https://waqwarfyocovhaxkdxoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_8BTKvF039SJk1GphJBw_3A_ARhoWnii";
 const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_KEY);
+const AUTH_REDIRECT_URL = "https://stevenxupengfei-bit.github.io/word-memory-app/";
 const INTERVALS = [0, 1, 3, 7, 15, 30, 60];
 const DAILY_NEW_LIMIT = 12;
 const MASTER_LEVEL = 5;
@@ -401,7 +402,7 @@ async function authenticate(endpoint, mode = "login") {
   try {
     if (SUPABASE_ENABLED) {
       if (mode === "register") {
-        const result = await supabaseRequest("/auth/v1/signup", {
+        const result = await supabaseRequest(`/auth/v1/signup?redirect_to=${encodeURIComponent(AUTH_REDIRECT_URL)}`, {
           method: "POST",
           body: { email, password },
           auth: false,
