@@ -1,15 +1,15 @@
 :root {
   color-scheme: light;
-  --ink: #18352b;
-  --muted: #66756f;
-  --line: #dce5df;
-  --panel: #f5f8f5;
+  --ink: #172b4d;
+  --muted: #60708a;
+  --line: #dbe4f0;
+  --panel: #f5f8fc;
   --paper: #ffffff;
-  --accent: #315c4b;
-  --accent-strong: #214437;
+  --accent: #2563eb;
+  --accent-strong: #1d4ed8;
   --warm: #d99c45;
   --bad: #b64242;
-  --shadow: 0 18px 45px rgba(35, 72, 57, 0.10);
+  --shadow: 0 18px 45px rgba(37, 99, 235, 0.11);
 }
 
 * {
@@ -21,7 +21,7 @@ body {
   min-height: 100vh;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: radial-gradient(circle at top right, #edf7ef 0, transparent 42%), #f2f0e9;
+  background: radial-gradient(circle at top right, #e4efff 0, transparent 42%), #f4f7fb;
 }
 
 body.locked {
@@ -59,7 +59,7 @@ button:hover {
   display: grid;
   place-items: center;
   padding: 22px;
-  background: radial-gradient(circle at 20% 10%, #dfeee1 0, transparent 36%), #f2f0e9;
+  background: radial-gradient(circle at 20% 10%, #dbeafe 0, transparent 36%), #f4f7fb;
 }
 
 .auth-panel {
@@ -210,10 +210,10 @@ button:hover {
   display: grid;
   gap: 6px;
   min-height: 118px;
-  border: 1px dashed #9abeb4;
+  border: 1px dashed #93b4ed;
   border-radius: 12px;
   padding: 15px;
-  background: #f3faf8;
+  background: #f3f7ff;
   cursor: pointer;
 }
 
@@ -260,7 +260,7 @@ button:hover {
   margin-top: 8px;
   overflow: hidden;
   border-radius: 999px;
-  background: #d7e8e3;
+  background: #dbeafe;
 }
 
 .ocr-progress i {
@@ -344,8 +344,8 @@ button:hover {
   border-radius: 14px;
   color: #fff;
   font-weight: 800;
-  background: linear-gradient(145deg, #315c4b, #6f9d62);
-  box-shadow: 0 8px 18px rgba(49, 92, 75, 0.22);
+  background: linear-gradient(145deg, #1d4ed8, #60a5fa);
+  box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
 }
 
 h1,
@@ -420,9 +420,9 @@ h1 {
   display: grid;
   gap: 6px;
   padding: 14px;
-  border: 1px solid #b8d7cf;
+  border: 1px solid #bfd3f5;
   border-radius: 8px;
-  background: #eef8f5;
+  background: #eff6ff;
 }
 
 .coach-card p {
@@ -451,7 +451,7 @@ h1 {
   overflow: hidden;
   height: 8px;
   border-radius: 999px;
-  background: #d7e8e3;
+  background: #dbeafe;
 }
 
 .daily-progress i {
@@ -523,7 +523,7 @@ h1 {
 
 .word-list li.active {
   border-radius: 8px;
-  background: #e7f1ee;
+  background: #e8f0ff;
 }
 
 .word-list strong {
@@ -558,7 +558,7 @@ h1 {
   border-radius: 999px;
   text-align: center;
   color: var(--accent-strong);
-  background: #dff2ed;
+  background: #dbeafe;
   font-size: 12px;
 }
 
@@ -700,9 +700,9 @@ h2 {
 }
 
 .phonetic-line {
-  border: 1px solid #b8d7cf;
+  border: 1px solid #bfd3f5;
   color: var(--accent-strong);
-  background: #eef8f5;
+  background: #eff6ff;
 }
 
 .forget-line {
@@ -881,7 +881,7 @@ h2 {
 
 .quiz-feedback.ok {
   color: var(--accent-strong);
-  background: #eef8f5;
+  background: #eff6ff;
 }
 
 .quiz-feedback.warn {
@@ -900,10 +900,10 @@ h2 {
   z-index: 4;
   top: 12px;
   margin-top: -6px;
-  border: 1px solid #b8d7cf;
+  border: 1px solid #bfd3f5;
   border-radius: 8px;
   padding: 10px;
-  background: rgba(238, 248, 245, 0.96);
+  background: rgba(239, 246, 255, 0.96);
   box-shadow: 0 10px 28px rgba(31, 41, 55, 0.08);
 }
 
