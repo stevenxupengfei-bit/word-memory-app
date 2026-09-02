@@ -52,6 +52,7 @@
           <p class="auth-privacy">GitHub 网页版会把每个邮箱的学习记录保存在当前设备，不会上传密码。可随时导出进度备份。</p>
           <div class="auth-actions">
             <button id="loginBtn" class="primary" type="submit">登录</button>
+            <button id="changePasswordBtn" type="button">修改密码</button>
           </div>
         </form>
       </div>
@@ -121,7 +122,6 @@
             </div>
             <div class="user-bar top-user-bar" aria-label="账号信息">
               <span id="userName">未登录</span>
-              <button id="changePasswordBtn">修改密码</button>
               <button id="logoutBtn" class="ghost">退出</button>
             </div>
           </div>
@@ -273,6 +273,10 @@ theft 盗窃；偷；赃物
         </header>
 
         <label>
+          <span>邮箱</span>
+          <input id="passwordEmail" type="email" inputmode="email" autocomplete="username" maxlength="120" required />
+        </label>
+        <label>
           <span>当前密码</span>
           <div class="password-input-row">
             <input id="currentPassword" type="password" autocomplete="current-password" minlength="6" required />
@@ -302,6 +306,6 @@ theft 盗窃；偷；赃物
       </form>
     </section>
 
-    <script src="app.js?v=20260902-auth-fix"></script>
+    <script src="app.js?v=20260902-password-before-login"></script>
   </body>
 </html>

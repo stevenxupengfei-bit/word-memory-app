@@ -1,9 +1,9 @@
-const CACHE = "memory-forest-v9";
+const CACHE = "memory-forest-v10";
 const APP_FILES = [
   "./",
   "./index.html",
   "./styles.css?v=20260902-eye-care",
-  "./app.js?v=20260902-auth-fix",
+  "./app.js?v=20260902-password-before-login",
   "./manifest.json",
   "./data/words.json",
   "./data/mnemonics.json",

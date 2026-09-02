@@ -369,9 +369,11 @@ async function handleApi(req, res, url) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/change-password") {
-    const user = await currentUser(req);
-    if (!user) return json(res, 401, { error: "请先登录。" });
     const body = await readJson(req);
+    const email = String(body.email || "").trim().toLowerCase();
+    const store = await readUsers();
+    const user = store.users.find((item) => String(item.email || item.name).toLowerCase() === email);
+    if (!user) return json(res, 404, { error: "这个邮箱还没有注册。" });
     if (!verifyPassword(String(body.currentPassword || ""), user)) {
       return json(res, 401, { error: "当前密码不正确。" });
     }
@@ -380,7 +382,6 @@ async function handleApi(req, res, url) {
     if (String(body.currentPassword) === passwordCheck.password) {
       return json(res, 400, { error: "新密码不能与当前密码相同。" });
     }
-    const store = await readUsers();
     const target = store.users.find((item) => item.id === user.id);
     if (!target) return json(res, 404, { error: "账号不存在。" });
     const password = hashPassword(passwordCheck.password);

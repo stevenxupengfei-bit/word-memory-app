@@ -1097,8 +1097,8 @@ h2 {
   .word-row { align-items: stretch; flex-direction: column; }
   .study-top { align-items: flex-start; }
   .top-actions { align-items: flex-end; flex-direction: column-reverse; }
-  .top-user-bar { max-width: 62vw; padding: 7px 8px; display: grid; grid-template-columns: 1fr 1fr; }
-  .top-user-bar span { grid-column: 1 / -1; max-width: 100%; font-size: 12px; }
+  .top-user-bar { max-width: 62vw; padding: 7px 8px; display: flex; }
+  .top-user-bar span { max-width: calc(62vw - 70px); font-size: 12px; }
   .top-user-bar button { min-height: 30px; }
   .voice-controls { width: 100%; flex-basis: auto; grid-template-columns: 1fr; }
   .upload-grid { grid-template-columns: 1fr; }

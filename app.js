@@ -267,13 +267,13 @@ function resetPasswordVisibility(scope = document) {
 }
 
 function openChangePassword() {
-  if (!currentUser) return;
   $("changePasswordForm").reset();
+  $("passwordEmail").value = $("authName").value.trim().toLowerCase();
   resetPasswordVisibility($("changePasswordForm"));
   $("passwordMessage").textContent = "";
   $("passwordScreen").classList.remove("hidden");
   document.body.classList.add("locked");
-  $("currentPassword").focus();
+  ($("passwordEmail").value ? $("currentPassword") : $("passwordEmail")).focus();
 }
 
 function closeChangePassword() {
@@ -285,12 +285,17 @@ function closeChangePassword() {
 
 async function changePassword(event) {
   event.preventDefault();
+  const email = $("passwordEmail").value.trim().toLowerCase();
   const currentPassword = $("currentPassword").value;
   const newPassword = $("newPassword").value;
   const confirmPassword = $("confirmPassword").value;
   const message = $("passwordMessage");
   message.classList.remove("success");
 
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    message.textContent = "请输入有效邮箱地址。";
+    return;
+  }
   if (currentPassword.length < 6 || newPassword.length < 6) {
     message.textContent = "密码至少 6 位。";
     return;
@@ -307,8 +312,7 @@ async function changePassword(event) {
   const submitButton = $("changePasswordForm").querySelector("button[type='submit']");
   submitButton.disabled = true;
   try {
-    if (currentUser.local || STATIC_HOST) {
-      const email = String(currentUser.email || currentUser.name).trim().toLowerCase();
+    if (STATIC_HOST) {
       const accounts = readLocalAccounts();
       const currentHash = await passwordDigest(email, currentPassword);
       if (!accounts[email] || accounts[email].passwordHash !== currentHash) {
@@ -323,7 +327,8 @@ async function changePassword(event) {
     } else {
       await api("/api/change-password", {
         method: "POST",
-        body: { currentPassword, newPassword },
+        body: { email, currentPassword, newPassword },
+        auth: false,
       });
     }
     $("changePasswordForm").reset();
