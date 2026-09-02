@@ -99,7 +99,6 @@ function bindEvents() {
       login();
     }
   });
-  $("registerBtn").addEventListener("click", toggleRegisterMode);
   $("sendCodeBtn").addEventListener("click", sendCode);
   document.querySelectorAll(".auth-tab").forEach((button) => {
     button.addEventListener("click", () => setAuthMode(button.dataset.authMode));
@@ -214,13 +213,10 @@ async function register() {
   await authenticate("/api/register", "register");
 }
 
-function toggleRegisterMode() {
-  authMode = authMode === "login" ? "register" : "login";
-  renderAuthMode();
-}
-
 function setAuthMode(mode) {
-  authMode = ["login", "register"].includes(mode) ? mode : "login";
+  const nextMode = ["login", "register"].includes(mode) ? mode : "login";
+  if (nextMode !== authMode) $("authPassword").value = "";
+  authMode = nextMode;
   renderAuthMode();
 }
 
@@ -228,8 +224,7 @@ function renderAuthMode() {
   const registering = authMode === "register";
   const codeLogin = false;
   const resetting = false;
-  $("loginBtn").textContent = registering ? "创建邮箱账户" : "登录";
-  $("registerBtn").textContent = registering ? "返回登录" : "注册新账号";
+  $("loginBtn").textContent = registering ? "注册并进入" : "登录";
   $("passwordLabel").textContent = resetting ? "新密码" : "密码";
   $("authPassword").autocomplete = registering || resetting ? "new-password" : "current-password";
   $("authPassword").required = !codeLogin;
@@ -380,11 +375,13 @@ async function authenticateLocally(email, password, mode) {
   const accounts = readLocalAccounts();
   const digest = await passwordDigest(email, password);
   if (mode === "register") {
-    if (accounts[email]) throw new Error("这个邮箱已经创建过账户，请直接登录。");
+    if (accounts[email]) throw new Error("这个邮箱已在本设备注册，请选择上方“邮箱登录”。");
     accounts[email] = { passwordHash: digest, createdAt: new Date().toISOString() };
     localStorage.setItem(LOCAL_ACCOUNTS_KEY, JSON.stringify(accounts));
-  } else if (!accounts[email] || accounts[email].passwordHash !== digest) {
-    throw new Error("邮箱或密码不正确；第一次使用请先创建账户。");
+  } else if (!accounts[email]) {
+    throw new Error("本设备没有这个账号。首次在此设备使用，请选择上方“创建账户”。");
+  } else if (accounts[email].passwordHash !== digest) {
+    throw new Error("密码不正确。若刚修改过密码，请输入修改后的新密码。");
   }
   await enterSession({
     token: `local:${encodeURIComponent(email)}`,
