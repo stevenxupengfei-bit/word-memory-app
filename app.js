@@ -10,6 +10,10 @@ const SUPABASE_URL = "https://waqwarfyocovhaxkdxoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_8BTKvF039SJk1GphJBw_3A_ARhoWnii";
 const SUPABASE_ENABLED = Boolean(SUPABASE_URL && SUPABASE_KEY);
 const AUTH_REDIRECT_URL = "https://stevenxupengfei-bit.github.io/word-memory-app/";
+const ACCOUNT_WORD_TABLES = Object.freeze({
+  "3ff1ca0c-acfa-4698-95b5-5573890b5292": "wordbook_steven",
+  "b39fdeec-0b83-4f05-a9e5-5f2375bb8440": "wordbook_zeran",
+});
 const INTERVALS = [0, 1, 3, 7, 15, 30, 60];
 const DAILY_NEW_LIMIT = 12;
 const MASTER_LEVEL = 5;
@@ -18,6 +22,7 @@ const WORDS_PER_PAGE = 20;
 let words = [];
 let baseWords = [];
 let customWords = [];
+let accountBaseWords = [];
 let memoryNotes = {};
 let examples = {};
 let progress = {};
@@ -117,6 +122,7 @@ function bindEvents() {
   $("changePasswordForm").addEventListener("submit", changePassword);
   $("logoutBtn").addEventListener("click", logout);
   $("importBtn").addEventListener("click", openImport);
+  $("emptyImportBtn").addEventListener("click", openImport);
   $("mobileImportBtn").addEventListener("click", openImport);
   $("closeImportBtn").addEventListener("click", closeImport);
   $("cancelImportBtn").addEventListener("click", closeImport);
@@ -493,8 +499,10 @@ async function resetPassword() {
 }
 
 async function enterSession(result) {
+  window.clearTimeout(saveTimer);
   token = result.token;
   currentUser = result.user;
+  accountBaseWords = result.baseWords || [];
   customWords = result.words || [];
   rebuildWords();
   localStorage.setItem(TOKEN_KEY, token);
@@ -519,6 +527,20 @@ async function acceptSupabaseSession(session) {
 async function enterCloudSession(user) {
   const email = String(user.email || "").toLowerCase();
   const cloud = await readCloudData(user.id);
+  const bookTable = ACCOUNT_WORD_TABLES[user.id];
+  if (bookTable) {
+    // Dedicated books never restore legacy local caches, including an empty book.
+    if (!cloud) throw new Error("个人单词本尚未完成迁移，请联系管理员。为保护记录，已停止自动恢复旧数据。");
+    await enterSession({
+      token,
+      user: { id: user.id, name: email, email, cloud: true, bookTable },
+      baseWords: Array.isArray(cloud.base_words) ? cloud.base_words : (bookTable === "wordbook_steven" ? baseWords : []),
+      progress: cloud.progress || {},
+      words: cloud.custom_words || [],
+    });
+    localStorage.setItem(`${LOCAL_WORDS_KEY}:${email}`, JSON.stringify(customWords));
+    return;
+  }
   const hasCloudData = Boolean(cloud);
   const localProgress = readAccountProgress(email);
   const localWords = readLocalWords(email);
@@ -545,19 +567,23 @@ async function refreshSupabaseSession() {
 }
 
 async function readCloudData(userId) {
-  const rows = await supabaseRequest(`/rest/v1/user_data?user_id=eq.${encodeURIComponent(userId)}&select=progress,custom_words`);
+  const table = ACCOUNT_WORD_TABLES[userId] || "user_data";
+  const fields = ACCOUNT_WORD_TABLES[userId] ? "progress,custom_words,base_words" : "progress,custom_words";
+  const rows = await supabaseRequest(`/rest/v1/${table}?user_id=eq.${encodeURIComponent(userId)}&select=${fields}`);
   return Array.isArray(rows) ? rows[0] || null : null;
 }
 
 async function writeCloudData() {
   if (!currentUser?.cloud) return;
-  await supabaseRequest("/rest/v1/user_data?on_conflict=user_id", {
+  const table = ACCOUNT_WORD_TABLES[currentUser.id] || "user_data";
+  await supabaseRequest(`/rest/v1/${table}?on_conflict=user_id`, {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: {
       user_id: currentUser.id,
       progress,
       custom_words: customWords,
+      ...(ACCOUNT_WORD_TABLES[currentUser.id] ? { base_words: accountBaseWords } : {}),
       updated_at: new Date().toISOString(),
     },
   });
@@ -630,12 +656,19 @@ function updateCodeButton() {
 }
 
 async function logout() {
+  window.clearTimeout(saveTimer);
   closeChangePassword();
   if (SUPABASE_ENABLED && token) {
     await supabaseRequest("/auth/v1/logout", { method: "POST" }).catch(() => {});
   }
   clearSessionTokens();
   currentUser = null;
+  accountBaseWords = [];
+  customWords = [];
+  words = [];
+  progress = {};
+  currentId = null;
+  render();
   authMode = "login";
   renderAuthMode();
   setAuthVisible(true);
@@ -674,7 +707,8 @@ function setAuthMessage(message) {
 }
 
 function rebuildWords() {
-  const normalizedBase = baseWords.map((item, index) => ({
+  const sourceBase = currentUser?.bookTable ? accountBaseWords : baseWords;
+  const normalizedBase = sourceBase.map((item, index) => ({
     ...item,
     id: item.id || slug(item.word, index),
     custom: false,
@@ -897,6 +931,10 @@ function recallBadge(p) {
 
 function renderCard() {
   const word = currentWord();
+  $("emptyBook").classList.toggle("hidden", Boolean(word));
+  $("studyCard").classList.toggle("hidden", !word);
+  $("reviewTimeline").classList.toggle("hidden", !word);
+  if (!word) $("cardIndex").textContent = "0 / 0";
   if (!word) return;
   const list = filteredWords();
   const index = Math.max(0, list.findIndex((item) => item.id === word.id)) + 1;

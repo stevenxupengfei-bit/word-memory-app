@@ -127,6 +127,11 @@
           </div>
         </header>
 
+        <section class="card hidden" id="emptyBook">
+          <h2>你的单词本还是空的</h2>
+          <p>拍照、上传文件或输入单词，创建自己的单词本。</p>
+          <button id="emptyImportBtn" class="primary" type="button">＋ 导入我的单词</button>
+        </section>
         <section class="card" id="studyCard" aria-live="polite">
           <div class="word-row">
             <div>
@@ -206,7 +211,7 @@
 
         </section>
 
-        <section class="timeline" aria-label="复习节奏">
+        <section class="timeline" id="reviewTimeline" aria-label="复习节奏">
           <h3>下次复习</h3>
           <div id="reviewPlan" class="review-plan"></div>
         </section>
@@ -310,6 +315,6 @@ theft 盗窃；偷；赃物
       </form>
     </section>
 
-    <script src="app.js?v=20260902-compact-header"></script>
+    <script src="app.js?v=20260903-separate-books"></script>
   </body>
 </html>
