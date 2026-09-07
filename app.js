@@ -970,7 +970,7 @@ function renderCard() {
 function weakWords() {
   return words.filter((word) => {
     const p = progress[word.id] || {};
-    return (p.misses || 0) >= 2 || p.lastGrade === "again" || (p.streak === 0 && p.attempts >= 2) || (p.level >= MASTER_LEVEL && !hasBidirectionalRecall(p));
+    return p.lastGrade === "again" || ((p.misses || 0) >= 2 && (p.streak || 0) < 2) || (p.streak === 0 && p.attempts >= 2) || (p.level >= MASTER_LEVEL && !hasBidirectionalRecall(p));
   });
 }
 
@@ -997,6 +997,8 @@ function renderPlan() {
 
 function grade(kind) {
   const word = currentWord();
+  if (!word) return;
+  const previousList = filteredWords();
   const p = progress[word.id];
   p.seen += p.seen ? 0 : 1;
   if (!p.firstSeenAt) p.firstSeenAt = Date.now();
@@ -1015,8 +1017,9 @@ function grade(kind) {
     p.streak += 1;
     const jump = kind === "easy" ? 2 : 1;
     p.level = Math.min(INTERVALS.length - 1, Math.max(1, p.level + jump));
-    const extra = kind === "hard" ? 0.5 : 1;
-    p.dueAt = todayStart() + INTERVALS[p.level] * dayMs * extra;
+    p.dueAt = kind === "hard"
+      ? Date.now() + 12 * 60 * 60 * 1000
+      : todayStart() + INTERVALS[p.level] * dayMs;
   }
 
   p.lastGrade = kind;
@@ -1024,7 +1027,7 @@ function grade(kind) {
   $("definitionBox").classList.add("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
-  currentId = nextAfter(word.id)?.id || filteredWords()[0]?.id || words[0].id;
+  currentId = nextAfter(word.id, previousList)?.id || filteredWords()[0]?.id || words[0]?.id || null;
   focusCurrentListPage();
   render();
 }
@@ -1140,9 +1143,14 @@ function resetQuizFeedback() {
   $("quizFeedback").classList.remove("ok", "warn");
 }
 
-function nextAfter(id) {
-  const list = filteredWords().filter((word) => word.id !== id);
-  return list[0] || words.find((word) => progress[word.id].dueAt <= Date.now() && word.id !== id);
+function nextAfter(id, previousList = filteredWords()) {
+  const eligibleIds = new Set(filteredWords().map((word) => word.id));
+  const start = previousList.findIndex((word) => word.id === id);
+  for (let offset = 1; offset <= previousList.length; offset += 1) {
+    const candidate = previousList[(Math.max(start, 0) + offset) % previousList.length];
+    if (candidate?.id !== id && eligibleIds.has(candidate.id)) return candidate;
+  }
+  return filteredWords().find((word) => word.id !== id) || null;
 }
 
 function save() {
