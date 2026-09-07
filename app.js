@@ -952,6 +952,7 @@ function renderCard() {
   $("mnemonicText").innerHTML = mnemonicFor(word).map((line) => `<span>${escapeHtml(line)}</span>`).join("");
   $("cardIndex").textContent = `${index || 1} / ${list.length || words.length}`;
   $("forgetLine").textContent = `遗忘时间：${forgetText(progress[word.id])}`;
+  renderMemorySignals(progress[word.id]);
   $("studyCard").classList.toggle("reverse-mode", reverse);
   $("mnemonicBox").classList.toggle("hidden", reverse);
   $("memoryPhotoFigure").classList.toggle("hidden", reverse);
@@ -1564,6 +1565,15 @@ function stableNumber(value) {
     hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
   }
   return (hash % 100000) + 1;
+}
+
+function renderMemorySignals(p = {}) {
+  const fresh = !p.seen;
+  const familiarity = fresh ? "new" : p.lastGrade === "again" ? "red" : p.lastGrade === "hard" || (p.streak || 0) < 2 ? "yellow" : "green";
+  const remaining = (p.dueAt || 0) - Date.now();
+  const risk = fresh ? "new" : remaining <= 0 ? "red" : remaining <= 24 * 60 * 60 * 1000 ? "yellow" : "green";
+  const signal = (title, status, labels) => `<div class="memory-signal"><span class="signal-lights" aria-hidden="true">${["red", "yellow", "green"].map(color => `<i class="signal-dot ${color}${status === color ? " lit" : ""}"></i>`).join("")}</span><span>${title}：<strong>${labels[status]}</strong></span></div>`;
+  $("memorySignals").innerHTML = signal("熟悉度", familiarity, { new: "未学习", red: "生疏 · 重点记忆", yellow: "不稳固 · 继续练习", green: "熟悉 · 保持复习" }) + signal("遗忘风险", risk, { new: "尚未评估", red: "高 · 已到复习时间", yellow: "中 · 24 小时内复习", green: "低 · 尚未到期" });
 }
 
 function forgetText(p) {

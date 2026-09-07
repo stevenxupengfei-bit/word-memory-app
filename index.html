@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <title>记忆森林 · 单词复习</title>
-    <link rel="stylesheet" href="styles.css?v=20260902-compact-header" />
+    <link rel="stylesheet" href="styles.css?v=20260907-signals" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -139,6 +139,7 @@
               <strong id="currentWord">请选择一个词</strong>
               <p class="part-line" id="partLine">词性：载入中</p>
               <p class="phonetic-line" id="phoneticLine">音标：载入中</p>
+              <div class="memory-signals" id="memorySignals" aria-live="polite"></div>
               <p class="forget-line" id="forgetLine">遗忘时间：载入中</p>
             </div>
             <div class="voice-controls">
@@ -315,6 +316,6 @@ theft 盗窃；偷；赃物
       </form>
     </section>
 
-    <script src="app.js?v=20260907-review-order"></script>
+    <script src="app.js?v=20260907-signals"></script>
   </body>
 </html>

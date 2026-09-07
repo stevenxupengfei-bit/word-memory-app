@@ -1130,3 +1130,11 @@ h2 {
   .ocr-panel img { width: 72px; height: 72px; }
   .review-plan { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Memory signals stay readable without relying on color alone. */
+.memory-signals { display: grid; gap: 10px; margin-top: 16px; }
+.memory-signal { display: flex; align-items: center; gap: 12px; font-size: 15px; line-height: 1.5; }
+.signal-lights { display: inline-flex; flex-shrink: 0; gap: 7px; padding: 9px 11px; border: 1px solid #41565c; border-radius: 24px; background: #0b161b; }
+.signal-dot { width: 12px; height: 12px; border-radius: 50%; background: #344047; }
+.signal-dot.red.lit { background: #ff8585; box-shadow: 0 0 7px #ff858550; }
+.signal-dot.yellow.lit { background: #e8c36a; box-shadow: 0 0 7px #e8c36a50; }
+.signal-dot.green.lit { background: #78cda3; box-shadow: 0 0 7px #78cda350; }
