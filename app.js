@@ -142,6 +142,7 @@ function bindEvents() {
   });
   $("showBtn").addEventListener("click", () => $("definitionBox").classList.remove("hidden"));
   $("checkBtn").addEventListener("click", checkAnswer);
+  $("submitAnswerBtn").addEventListener("click", checkAnswer);
   $("againBtn").addEventListener("click", () => grade("again"));
   $("hardBtn").addEventListener("click", () => grade("hard"));
   $("goodBtn").addEventListener("click", () => grade("good"));
@@ -949,6 +950,7 @@ function renderCard() {
   $("meaningLabel").textContent = reverse ? "作答方向" : "中文释义";
   $("meaningText").textContent = reverse ? "写出对应英文单词或短语。" : chineseMeaning(word.definition);
   $("exampleText").textContent = exampleFor(word);
+  $("exampleTranslation").textContent = exampleTranslationFor(word);
   $("mnemonicText").innerHTML = mnemonicFor(word).map((line) => `<span>${escapeHtml(line)}</span>`).join("");
   $("cardIndex").textContent = `${index || 1} / ${list.length || words.length}`;
   $("forgetLine").textContent = `遗忘时间：${forgetText(progress[word.id])}`;
@@ -1038,6 +1040,7 @@ function checkAnswer() {
   if (!word) return;
   const p = progress[word.id];
   const answer = $("answerInput").value.trim();
+  if (!answer) { $("quizFeedback").textContent = "请先填写答案，再提交批改。"; return; }
   const result = evaluateAnswer(word, answer, quizMode);
   p.checks = normalizeChecks(p.checks);
   if (quizMode === "reverse") {
@@ -1134,7 +1137,7 @@ function normalizeAnswer(value) {
 }
 
 function renderQuizFeedback(result) {
-  $("quizFeedback").textContent = result.message;
+  $("quizFeedback").textContent = `${result.matched ? "✓ 正确" : "✗ 未答对"}。参考答案：${result.expected}。${result.message}`;
   $("quizFeedback").classList.toggle("ok", result.matched);
   $("quizFeedback").classList.toggle("warn", !result.matched);
 }
@@ -1346,6 +1349,14 @@ function preferredVoice(voices) {
 
 function exampleFor(word) {
   return examples[word.word] || examples[word.word.toLowerCase()] || word.example || `I am learning the word “${word.word}”.`;
+}
+
+function exampleTranslationFor(word) {
+  const translations = {
+    "biologist":"这位生物学家研究生物。", "physicist":"这位物理学家研究能量和物质。", "psychologist":"这位心理学家倾听她的患者诉说。", "unparallel":"这两条线不平行。", "production":"工厂提高了产量。", "meat":"我们做了肉作为晚餐。", "cruelty":"我们必须制止虐待动物的行为。", "surgery":"她在手术后康复了。", "bearbaiting":"纵狗斗熊是一种残忍的古老娱乐活动。", "cope":"他能应对压力。", "abstract thinking":"数学常常需要抽象思维。",
+    "be about to":"马上就要上课了。", "take place":"会议将于明天举行。", "as for":"至于晚饭，我来做。", "to be honest":"说实话，我当时很紧张。", "around the corner":"假期快到了。", "How’s it going":"嗨，最近怎么样？", "long time no see":"好久不见，我的朋友！", "float":"这片叶子能浮在水面上。", "busiest":"星期一是我最忙的一天。", "family gathering":"我们星期天举行了一次家庭聚会。", "social gathering":"她在一次社交聚会上认识了他。", "desert":"骆驼能生活在沙漠中。", "dessert":"我们吃了蛋糕作为甜点。", "observe":"安静地观察那只鸟。", "secular":"这所学校提供非宗教教育。", "go through":"我们都会经历困难的时期。", "how come":"你怎么迟到了？", "as well as":"她既会说英语，也会说法语。", "blessing":"身体健康是一种福气。", "settle":"他们决定在上海定居。", "pilgrim":"这位朝圣者步行前往圣城。", "contention":"这个计划成了争论的焦点。", "pause":"请暂停视频。", "intelligent":"她是个聪明的学生。", "human being":"每个人都需要尊重。", "commitment":"学习语言需要投入和坚持。", "sitter":"临时保姆照顾了这个婴儿。", "sociologist":"这位社会学家研究人们如何共同生活。", "layer":"加一层奶酪。", "yet":"我还没做完。", "progress":"你正在取得很好的进步。", "manually":"我们用手打开了门。", "quench":"水能解渴。", "quencher":"这杯冷饮很解渴。", "grasp":"她很快理解了这个想法。", "raft":"他们乘木筏过了河。", "barrel":"雨水装满了桶。", "ape":"那只猿爬上了树。", "abstract ideas":"孩子们学习讨论抽象概念。", "cope with":"她学会了应对压力。", "superior":"这种材料比塑料更好。", "insight":"这本书给了我新的见解。", "technical":"他解决了这个技术问题。", "reason":"告诉我你离开的原因。", "remarkable":"她取得了显著的进步。", "unparalleled":"山上的景色无与伦比。", "steadily":"温度稳步上升。", "interval":"我们在两节课之间休息了一小会儿。", "extinguish":"消防员扑灭了火。", "shine":"星星在夜晚闪耀。", "impose":"不要把你的想法强加给别人。", "trial":"这种新药仍在试验中。", "preliminary":"初步结果看起来不错。", "mental ability":"睡眠能提高心智能力。", "subtle":"颜色有细微的差别。", "scale":"请用秤称一下它。", "nest":"那只鸟筑了一个巢。", "dead end":"这条路通向死胡同。", "passage":"仔细阅读这段文章。", "maze":"我们找到了穿过迷宫的路。", "complicated":"这些说明太复杂了。", "possess":"她非常有耐心。", "routine":"锻炼是我日常生活的一部分。", "puzzle":"孩子完成了拼图。", "behave":"请在课堂上表现好一点。", "complexity":"我理解这个问题的复杂性。", "creature":"鲸是一种海洋生物。", "intellectual":"阅读有助于智力发展。", "relative":"堂表兄弟姐妹属于亲属。", "commonest":"这是最常见的错误。", "brain":"大脑控制身体。"
+  };
+  return translations[word.word] || translations[word.word.toLowerCase()] || word.exampleTranslation || (word.example ? "此例句暂未提供中文翻译。" : `我正在学习“${word.word}”这个词。`);
 }
 
 function exportProgress() {

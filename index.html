@@ -184,6 +184,7 @@
               <button id="speakExampleBtn" type="button">🔊 听例句</button>
             </div>
             <p id="exampleText"></p>
+            <p id="exampleTranslation" lang="zh-CN"></p>
           </div>
 
           <div class="mnemonic" id="mnemonicBox">
@@ -206,7 +207,8 @@
               <button class="mode-btn" data-mode="reverse" type="button">中译英</button>
             </div>
             <label for="answerInput">默写/释义</label>
-            <textarea id="answerInput" rows="3" placeholder="写下你想到的意思、词根或例句"></textarea>
+            <textarea id="answerInput" rows="3" placeholder="英译中填写中文释义；中译英填写英文单词"></textarea>
+            <button id="submitAnswerBtn" type="button">提交批改</button>
             <p id="quizFeedback" class="quiz-feedback">先默写，再自查。</p>
           </div>
 
@@ -316,6 +318,6 @@ theft 盗窃；偷；赃物
       </form>
     </section>
 
-    <script src="app.js?v=20260907-signals"></script>
+    <script src="app.js?v=20260907-translations"></script>
   </body>
 </html>
