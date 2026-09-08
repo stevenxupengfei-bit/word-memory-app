@@ -1,0 +1,35 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const paragraph = {};
+const button = {};
+const toast = { hidden: true, querySelector: tag => tag === 'p' ? paragraph : button };
+const ctx = vm.createContext({console, location:{hostname:'localhost',protocol:'file:'},navigator:{},window:{setTimeout:()=>1,clearTimeout:()=>{}},localStorage:{getItem:()=>null},document:{getElementById:()=>toast}});
+vm.runInContext(fs.readFileSync(path.join(root,'data/practical-examples.js'),'utf8'),ctx);
+vm.runInContext(fs.readFileSync(path.join(root,'app.js'),'utf8').replace(/boot\(\);\s*$/, ''),ctx);
+ctx.baseExamples=JSON.parse(fs.readFileSync(path.join(root,'data/examples.json'),'utf8'));
+vm.runInContext('examples=baseExamples',ctx);
+const practical=vm.runInContext('window.practicalExamples',ctx);
+assert.equal(Object.keys(practical).length,115);
+for(const [word,example] of Object.entries(practical)) {
+  assert.ok(example.en && example.zh,word);
+  ctx.testWord={word};
+  assert.equal(vm.runInContext('exampleFor(testWord)',ctx),example.en);
+  assert.equal(vm.runInContext('exampleTranslationFor(testWord)',ctx),example.zh);
+  assert.doesNotMatch(example.en,/learning the word/i);
+}
+assert.equal(vm.runInContext(`exampleFor({word:'unknown',example:'I am learning the word "".'})`,ctx),'');
+assert.equal(vm.runInContext(`partOfSpeechText({definition:'adj. 漂亮的；n. 美人'})`,ctx),'adj. / n.');
+assert.equal(vm.runInContext(`partOfSpeechText({part:'及物动词 / 名词'})`,ctx),'vt. / n.');
+vm.runInContext(`words=[{id:'a'},{id:'b'},{id:'c'},{id:'d'}];progress={a:{lastReviewed:Date.now(),lastGrade:'good'},b:{lastReviewed:Date.now(),lastGrade:'hard'},c:{lastReviewed:Date.now()-8*dayMs,lastGrade:'easy'},d:{lastReviewed:Date.now(),lastGrade:'again'},other:{lastReviewed:Date.now(),lastGrade:'good'}}`,ctx);
+assert.equal(vm.runInContext('recentLearningStats().remembered',ctx),1);
+assert.equal(vm.runInContext('recentLearningStats().reviewed',ctx),3);
+vm.runInContext('for(let i=0;i<5;i++) maybeEncourage()',ctx);
+assert.equal(toast.hidden,false);
+assert.ok(paragraph.textContent);
+button.onclick(); assert.equal(toast.hidden,true);
+vm.runInContext('resetEncouragement()',ctx);
+assert.equal(vm.runInContext('encouragementCount',ctx),0);
+console.log('PASS: 115 practical bilingual examples, POS abbreviations, scoped accurate statistics, toast dismissal/reset.');
