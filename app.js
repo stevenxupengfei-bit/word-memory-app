@@ -4,7 +4,7 @@ const REFRESH_TOKEN_KEY = "word-memory-refresh-token";
 const LOCAL_ACCOUNTS_KEY = "word-memory-local-accounts-v2";
 const LOCAL_WORDS_KEY = "word-memory-local-words-v2";
 const QUIZ_MODE_KEY = "word-memory-quiz-mode";
-const VOICE_KEY = "word-memory-voice-name";
+const VOICE_KEY = "word-memory-voice-name-v2";
 const OCR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js";
 const SUPABASE_URL = "https://waqwarfyocovhaxkdxoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_8BTKvF039SJk1GphJBw_3A_ARhoWnii";
@@ -1301,8 +1301,8 @@ function speakText(text) {
   if (!text || !("speechSynthesis" in window)) return;
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = "en-US";
-  utterance.rate = 0.82;
-  utterance.pitch = 1.06;
+  utterance.rate = 0.93;
+  utterance.pitch = 1;
   const selected = englishVoices.find((voice) => voice.name === $("voiceSelect").value) || preferredVoice(englishVoices);
   if (selected) {
     utterance.voice = selected;
@@ -1319,13 +1319,13 @@ function setupVoices() {
     return;
   }
   const refresh = () => {
-    englishVoices = speechSynthesis.getVoices().filter((voice) => /^en[-_]/i.test(voice.lang));
+    englishVoices = speechSynthesis.getVoices().filter((voice) => /^en[-_]/i.test(voice.lang) && !/albert|bad news|bahh|bells|boing|bubbles|cellos|organ|trinoids|whisper|wobble|zarvox|jester|junior|grandma|grandpa/i.test(voice.name)).sort((a, b) => voiceQuality(b) - voiceQuality(a));
     if (!englishVoices.length) return;
     const saved = localStorage.getItem(VOICE_KEY);
     const preferred = englishVoices.find((voice) => voice.name === saved) || preferredVoice(englishVoices);
     const preferredNames = new Set(femaleVoiceCandidates(englishVoices).map((voice) => voice.name));
     $("voiceSelect").innerHTML = englishVoices.map((voice) => {
-      const natural = preferredNames.has(voice.name) ? "自然女声 · " : "系统声线 · ";
+      const natural = /Google UK English Female/i.test(voice.name) ? "推荐女声 · " : preferredNames.has(voice.name) ? "女声 · " : "系统声线 · ";
       return `<option value="${escapeHtml(voice.name)}">${natural}${escapeHtml(voice.name)} (${escapeHtml(voice.lang)})</option>`;
     }).join("");
     if (preferred) {
@@ -1338,13 +1338,20 @@ function setupVoices() {
 }
 
 function femaleVoiceCandidates(voices) {
-  const names = /samantha|ava|allison|susan|karen|kathy|moira|tessa|fiona|flo|grandma|sandy|shelley|serena|zoe|victoria|martha|monica|salli|joanna|kendra|aria|jenny|emma|libby|sonia|zira/i;
+  const names = /female|samantha|ava|allison|susan|karen|moira|tessa|fiona|serena|zoe|victoria|martha|monica|salli|joanna|kendra|aria|jenny|emma|libby|sonia|zira/i;
   return voices.filter((voice) => names.test(voice.name));
 }
 
 function preferredVoice(voices) {
-  const female = femaleVoiceCandidates(voices);
-  return female.find((voice) => /^en-US/i.test(voice.lang)) || female[0] || voices.find((voice) => /^en-US/i.test(voice.lang)) || voices[0];
+  const sorted = [...voices].sort((a, b) => voiceQuality(b) - voiceQuality(a));
+  const female = femaleVoiceCandidates(sorted);
+  return female[0] || sorted[0];
+}
+
+function voiceQuality(voice) {
+  if (/Google UK English Female/i.test(voice.name)) return 1000;
+  const female = femaleVoiceCandidates([voice]).length > 0;
+  return (female ? 100 : 0) + (/premium|enhanced|natural|neural/i.test(voice.name) ? 500 : 0) + (/samantha|ava|allison|zoe/i.test(voice.name) ? 50 : 0);
 }
 
 function exampleFor(word) {
