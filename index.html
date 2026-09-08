@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <title>记忆森林 · 单词复习</title>
-    <link rel="stylesheet" href="styles.css?v=20260907-signals" />
+    <link rel="stylesheet" href="styles.css?v=20260908-side-meaning" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -134,9 +134,11 @@
         </section>
         <section class="card" id="studyCard" aria-live="polite">
           <div class="word-row">
-            <div>
+            <div class="word-heading">
               <p class="label" id="promptLabel">单词</p>
               <strong id="currentWord">请选择一个词</strong>
+            </div>
+            <div class="word-details">
               <p class="part-line" id="partLine">词性：载入中</p>
               <p class="phonetic-line" id="phoneticLine">音标：载入中</p>
               <div class="memory-signals" id="memorySignals" aria-live="polite"></div>
@@ -149,6 +151,24 @@
                 <option value="">正在寻找自然女声…</option>
               </select>
             </div>
+            <div class="study-explanation">
+              <div class="definition hidden" id="definitionBox">
+                <p class="label">完整释义</p>
+                <p id="definitionText"></p>
+              </div>
+              <div class="meaning-strip">
+                <p class="label" id="meaningLabel">中文释义</p>
+                <p id="meaningText"></p>
+              </div>
+              <div class="example-strip" id="exampleBox">
+                <div class="example-head">
+                  <p class="label">简单例句</p>
+                  <button id="speakExampleBtn" type="button">🔊 听例句</button>
+                </div>
+                <p id="exampleText"></p>
+                <p id="exampleTranslation" lang="zh-CN"></p>
+              </div>
+            </div>
           </div>
 
           <div class="actions action-dock">
@@ -160,14 +180,6 @@
             <button id="easyBtn">很熟</button>
           </div>
 
-          <div class="definition hidden" id="definitionBox">
-            <p class="label">中文释义</p>
-            <p id="definitionText"></p>
-          </div>
-          <div class="meaning-strip">
-            <p class="label" id="meaningLabel">中文释义</p>
-            <p id="meaningText"></p>
-          </div>
           <figure class="memory-photo" id="memoryPhotoFigure">
             <img id="memoryPhoto" alt="单词记忆照片" />
             <figcaption>
@@ -176,14 +188,6 @@
             </figcaption>
           </figure>
 
-          <div class="example-strip" id="exampleBox">
-            <div class="example-head">
-              <p class="label">简单例句</p>
-              <button id="speakExampleBtn" type="button">🔊 听例句</button>
-            </div>
-            <p id="exampleText"></p>
-            <p id="exampleTranslation" lang="zh-CN"></p>
-          </div>
 
           <div class="mnemonic" id="mnemonicBox">
             <p class="label">联想线索</p>

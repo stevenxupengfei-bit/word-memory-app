@@ -1138,3 +1138,15 @@ h2 {
 .signal-dot.red.lit { background: #ff8585; box-shadow: 0 0 7px #ff858550; }
 .signal-dot.yellow.lit { background: #e8c36a; box-shadow: 0 0 7px #e8c36a50; }
 .signal-dot.green.lit { background: #78cda3; box-shadow: 0 0 7px #78cda350; }
+.word-row:has(.study-explanation) { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 20px 28px; align-items: start; }
+.word-heading { grid-column: 1 / -1; grid-row: 1; padding-right: 290px; min-width: 0; }
+.word-row:has(.study-explanation) .voice-controls { grid-column: 2; grid-row: 1; justify-self: end; width: 260px; max-width: 100%; }
+.word-details { grid-column: 1; grid-row: 2; min-width: 0; }
+.study-explanation { grid-column: 2; grid-row: 2; align-self: center; display: grid; gap: 16px; min-width: 0; overflow-wrap: anywhere; }
+.study-explanation .meaning-strip, .study-explanation .example-strip { margin: 0; }
+@media (max-width: 760px) {
+  .word-row:has(.study-explanation) { display: flex; flex-direction: column; align-items: stretch; }
+  .word-heading { padding-right: 0; }
+  .word-row:has(.study-explanation) .voice-controls { width: 100%; }
+  .study-explanation { align-self: stretch; }
+}
