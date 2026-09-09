@@ -160,6 +160,7 @@ function bindEvents() {
   $("prevPageBtn").addEventListener("click", () => changeListPage(-1));
   $("nextPageBtn").addEventListener("click", () => changeListPage(1));
   $("exportBtn").addEventListener("click", exportProgress);
+  $("cleanDuplicatesBtn").addEventListener("click", cleanUnstudiedDuplicates);
   $("resetBtn").addEventListener("click", resetProgress);
   document.querySelectorAll(".mode-btn").forEach((button) => {
     button.addEventListener("click", () => setQuizMode(button.dataset.mode));
@@ -1435,6 +1436,86 @@ function exportProgress() {
   a.download = "word-memory-progress.json";
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function duplicateWordKey(value) {
+  return String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02bc`]/g, "'")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function hasLearningProgress(item) {
+  const itemProgress = progress[item.id] || {};
+  return ["seen", "attempts", "correct", "firstSeenAt", "lastReviewed", "level"]
+    .some((field) => Number(itemProgress[field] || 0) > 0);
+}
+
+function duplicateCleanupPlan() {
+  const groups = new Map();
+  words.forEach((item) => {
+    const key = duplicateWordKey(item.word);
+    if (!key) return;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  });
+
+  const removeIds = new Set();
+  groups.forEach((items) => {
+    if (items.length < 2) return;
+    const studied = items.filter(hasLearningProgress);
+    if (studied.length) {
+      items.filter((item) => item.custom && !hasLearningProgress(item))
+        .forEach((item) => removeIds.add(item.id));
+      return;
+    }
+    const keeper = items.find((item) => !item.custom) || items[0];
+    items.filter((item) => item.custom && item.id !== keeper.id)
+      .forEach((item) => removeIds.add(item.id));
+  });
+  return removeIds;
+}
+
+async function cleanUnstudiedDuplicates() {
+  const removeIds = duplicateCleanupPlan();
+  if (!removeIds.size) {
+    alert("没有发现可安全删除的未学习重复记录。");
+    return;
+  }
+  if (!confirm(`将删除 ${removeIds.size} 条未学习的重复记录；所有已学习记录都会保留。是否继续？`)) return;
+
+  const previousCustomWords = customWords;
+  const previousProgress = progress;
+  try {
+    customWords = customWords.filter((item) => !removeIds.has(item.id));
+    progress = { ...progress };
+    removeIds.forEach((id) => delete progress[id]);
+    rebuildWords();
+    prepareProgress();
+    const email = (currentUser?.email || currentUser?.name || "").toLowerCase();
+    if (email) {
+      localStorage.setItem(`${LOCAL_WORDS_KEY}:${email}`, JSON.stringify(customWords));
+      localStorage.setItem(`${STORE_KEY}:${email}`, JSON.stringify(progress));
+    }
+    if (currentUser?.cloud) await writeCloudData();
+    selectNext();
+    render();
+    alert(`已删除 ${removeIds.size} 条未学习重复记录，已学习记录均已保留。`);
+  } catch (error) {
+    customWords = previousCustomWords;
+    progress = previousProgress;
+    rebuildWords();
+    prepareProgress();
+    const email = (currentUser?.email || currentUser?.name || "").toLowerCase();
+    if (email) {
+      localStorage.setItem(`${LOCAL_WORDS_KEY}:${email}`, JSON.stringify(customWords));
+      localStorage.setItem(`${STORE_KEY}:${email}`, JSON.stringify(progress));
+    }
+    render();
+    alert(`清理失败，数据已回滚：${error.message}`);
+  }
 }
 
 function resetProgress() {
