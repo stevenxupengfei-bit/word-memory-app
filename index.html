@@ -87,6 +87,7 @@
           <button class="tab active" data-filter="due">今日</button>
           <button class="tab" data-filter="new">新词</button>
           <button class="tab" data-filter="weak">薄弱</button>
+          <button class="tab" data-filter="favorite">收藏</button>
           <button class="tab" data-filter="all">全部</button>
         </div>
 
@@ -164,7 +165,10 @@
               <div class="example-strip" id="exampleBox">
                 <div class="example-head">
                   <p class="label">简单例句</p>
-                  <button id="speakExampleBtn" type="button">🔊 听例句</button>
+                  <div class="example-actions">
+                    <button id="favoriteExampleBtn" type="button" aria-pressed="false">☆ 收藏</button>
+                    <button id="speakExampleBtn" type="button">🔊 听例句</button>
+                  </div>
                 </div>
                 <p id="exampleText"></p>
                 <p id="exampleTranslation" lang="zh-CN"></p>

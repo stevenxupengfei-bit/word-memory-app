@@ -513,7 +513,7 @@ h1 {
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 6px;
   padding: 4px;
   border: 1px solid var(--line);
@@ -881,6 +881,19 @@ h2 {
 .example-head button {
   min-height: 34px;
   padding: 0 10px;
+}
+
+.example-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+#favoriteExampleBtn.active {
+  color: #172825;
+  border-color: #e8c36a;
+  background: #e8c36a;
 }
 
 #exampleText {

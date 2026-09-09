@@ -151,6 +151,7 @@ function bindEvents() {
   $("easyBtn").addEventListener("click", () => grade("easy"));
   $("speakBtn").addEventListener("click", speakCurrent);
   $("speakExampleBtn").addEventListener("click", speakExample);
+  $("favoriteExampleBtn").addEventListener("click", toggleExampleFavorite);
   $("voiceSelect").addEventListener("change", () => {
     localStorage.setItem(VOICE_KEY, $("voiceSelect").value);
     speakCurrent();
@@ -746,6 +747,7 @@ function freshProgress() {
     checks: freshChecks(),
     lastCheck: null,
     lastGrade: "new",
+    exampleFavorite: false,
   };
 }
 
@@ -815,6 +817,7 @@ function filteredWords() {
   if (filter === "due") list = dueWords();
   if (filter === "new") list = words.filter((word) => progress[word.id].seen === 0);
   if (filter === "weak") list = weakWords();
+  if (filter === "favorite") list = words.filter((word) => Boolean(progress[word.id].exampleFavorite));
   if (q) {
     list = list.filter((word) => `${word.word} ${word.definition}`.toLowerCase().includes(q));
   }
@@ -945,7 +948,7 @@ function renderCard() {
   const index = Math.max(0, list.findIndex((item) => item.id === word.id)) + 1;
   const reverse = quizMode === "reverse";
   const core = noteCore(word);
-  $("queueLabel").textContent = filter === "due" ? "今日队列" : filter === "new" ? "新词队列" : filter === "weak" ? "薄弱队列" : "全部词表";
+  $("queueLabel").textContent = filter === "due" ? "今日队列" : filter === "new" ? "新词队列" : filter === "weak" ? "薄弱队列" : filter === "favorite" ? "收藏例句" : "全部词表";
   $("wordTitle").textContent = reverse ? core : word.word;
   $("promptLabel").textContent = reverse ? "中文核心义" : "单词";
   $("currentWord").textContent = reverse ? core : word.word;
@@ -964,6 +967,11 @@ function renderCard() {
   $("memoryPhotoFigure").classList.toggle("hidden", reverse);
   $("speakBtn").disabled = reverse;
   $("speakExampleBtn").disabled = reverse;
+  const favorite = Boolean(progress[word.id].exampleFavorite);
+  $("favoriteExampleBtn").disabled = reverse;
+  $("favoriteExampleBtn").textContent = favorite ? "★ 已收藏" : "☆ 收藏";
+  $("favoriteExampleBtn").classList.toggle("active", favorite);
+  $("favoriteExampleBtn").setAttribute("aria-pressed", String(favorite));
   $("exampleBox").classList.toggle("hidden", reverse || !exampleFor(word));
   document.querySelectorAll(".mode-btn").forEach((button) => button.classList.toggle("active", button.dataset.mode === quizMode));
   if (reverse) {
@@ -971,6 +979,20 @@ function renderCard() {
   } else {
     renderWordInfo(word);
     renderMemoryPhoto(word);
+  }
+}
+
+function toggleExampleFavorite() {
+  const word = currentWord();
+  if (!word) return;
+  progress[word.id] ||= freshProgress();
+  progress[word.id].exampleFavorite = !progress[word.id].exampleFavorite;
+  save();
+  renderCard();
+  if (filter === "favorite") {
+    listPage = 1;
+    selectNext();
+    render();
   }
 }
 
