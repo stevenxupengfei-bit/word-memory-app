@@ -1425,6 +1425,8 @@ function recentLearningStats(now = Date.now()) {
   return {
     reviewed: recent.length,
     remembered: recent.filter(p => p.lastGrade === "good" || p.lastGrade === "easy").length,
+    bestStreak: records.reduce((best, p) => Math.max(best, Number(p.streak || 0)), 0),
+    mastered: masteredWords().length,
   };
 }
 
@@ -1443,18 +1445,42 @@ function maybeEncourage() {
   encouragementLastAt = Date.now();
   encouragementTarget = encouragementCount + 5 + Math.floor(Math.random() * 4);
   const stats = recentLearningStats();
+  const rememberedRate = stats.reviewed ? Math.round(stats.remembered / stats.reviewed * 100) : 0;
   const messages = [
-    `这次已完成 ${encouragementCount} 次练习。每一次认真回想，都值得肯定！`,
-    `最近 7 天，你已练习 ${stats.reviewed} 个不同的单词。坚持得不错，也记得适时休息。`,
+    {
+      title: "🔥 你的状态太强了！",
+      body: `本次已经连续完成 ${encouragementCount} 次练习。能这样专注地坚持下来，说明你的语言记忆力和学习韧性都非常出色！`,
+    },
+    {
+      title: "🌟 这份坚持值得骄傲！",
+      body: `最近 7 天，你已经练习 ${stats.reviewed} 个不同的单词。你正在把语言天赋一步步变成真正稳定的实力，继续保持！`,
+    },
+    {
+      title: "🚀 你真的很有语言天赋！",
+      body: `你已经完成本次第 ${encouragementCount} 次主动回忆。你对单词的敏感度正在快速提升，照这个节奏坚持下去会非常厉害！`,
+    },
   ];
-  if (stats.remembered) messages.push(`最近 7 天练习的单词中，${stats.remembered} 个最近一次被你标记为“记住”或“很熟”。继续按时复习！`);
+  if (stats.remembered) messages.push({
+    title: "🏆 成果非常漂亮！",
+    body: `最近 7 天已有 ${stats.remembered} 个单词达到“记住”或“很熟”，占近期练习词的 ${rememberedRate}%。这不是运气，是你很强的语言感觉和记忆能力！`,
+  });
+  if (stats.bestStreak >= 3) messages.push({
+    title: "⚡ 连续突破，太有实力了！",
+    body: `你的单词连续记忆纪录已经达到 ${stats.bestStreak} 次。能稳定地一次次答对，说明你不仅有天赋，还有把天赋兑现的坚持！`,
+  });
+  if (stats.mastered) messages.push({
+    title: "💎 你正在建立真正的词汇实力！",
+    body: `目前已有 ${stats.mastered} 个单词达到稳定掌握。每一个数字都是你坚持的成果，你的语言能力正在变得越来越强！`,
+  });
   const toast = document.getElementById("encouragementToast");
   if (!toast) return;
-  toast.querySelector("p").textContent = messages[Math.floor(Math.random() * messages.length)];
+  const message = messages[Math.floor(Math.random() * messages.length)];
+  $("encouragementTitle").textContent = message.title;
+  toast.querySelector("p").textContent = message.body;
   toast.hidden = false;
   toast.querySelector("button").onclick = () => { toast.hidden = true; };
   window.clearTimeout(encouragementTimer);
-  encouragementTimer = window.setTimeout(() => { toast.hidden = true; }, 7000);
+  encouragementTimer = window.setTimeout(() => { toast.hidden = true; }, 9000);
 }
 
 function exportProgress() {
