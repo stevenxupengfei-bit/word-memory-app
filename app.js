@@ -36,6 +36,8 @@ let quizMode = localStorage.getItem(QUIZ_MODE_KEY) || "forward";
 let currentUser = null;
 let token = localStorage.getItem(TOKEN_KEY) || "";
 let saveTimer = null;
+let duplicateCleanupArmed = false;
+let duplicateCleanupTimer = null;
 let photoSalt = Number(localStorage.getItem("word-memory-photo-salt") || "1");
 let activePhotoKey = "";
 let activeInfoKey = "";
@@ -1480,11 +1482,26 @@ function duplicateCleanupPlan() {
 
 async function cleanUnstudiedDuplicates() {
   const removeIds = duplicateCleanupPlan();
+  const button = $("cleanDuplicatesBtn");
   if (!removeIds.size) {
-    alert("没有发现可安全删除的未学习重复记录。");
+    button.textContent = "没有可清理项";
+    window.setTimeout(() => { button.textContent = "清理重复"; }, 2500);
     return;
   }
-  if (!confirm(`将删除 ${removeIds.size} 条未学习的重复记录；所有已学习记录都会保留。是否继续？`)) return;
+  if (!duplicateCleanupArmed) {
+    duplicateCleanupArmed = true;
+    button.textContent = `确认删除 ${removeIds.size} 条`;
+    window.clearTimeout(duplicateCleanupTimer);
+    duplicateCleanupTimer = window.setTimeout(() => {
+      duplicateCleanupArmed = false;
+      button.textContent = "清理重复";
+    }, 10000);
+    return;
+  }
+  duplicateCleanupArmed = false;
+  window.clearTimeout(duplicateCleanupTimer);
+  button.disabled = true;
+  button.textContent = "正在清理…";
 
   const previousCustomWords = customWords;
   const previousProgress = progress;
@@ -1502,7 +1519,7 @@ async function cleanUnstudiedDuplicates() {
     if (currentUser?.cloud) await writeCloudData();
     selectNext();
     render();
-    alert(`已删除 ${removeIds.size} 条未学习重复记录，已学习记录均已保留。`);
+    button.textContent = `已清理 ${removeIds.size} 条`;
   } catch (error) {
     customWords = previousCustomWords;
     progress = previousProgress;
@@ -1514,7 +1531,10 @@ async function cleanUnstudiedDuplicates() {
       localStorage.setItem(`${STORE_KEY}:${email}`, JSON.stringify(progress));
     }
     render();
-    alert(`清理失败，数据已回滚：${error.message}`);
+    console.warn("Duplicate cleanup failed:", error.message);
+    button.textContent = "清理失败（已回滚）";
+  } finally {
+    button.disabled = false;
   }
 }
 
