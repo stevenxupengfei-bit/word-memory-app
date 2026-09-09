@@ -141,8 +141,7 @@ function bindEvents() {
   $("memoryPhoto").addEventListener("load", () => {
     $("memoryPhoto").classList.remove("loading");
   });
-  $("showBtn").addEventListener("click", () => $("definitionBox").classList.remove("hidden"));
-  $("checkBtn").addEventListener("click", checkAnswer);
+  $("checkBtn").addEventListener("click", revealAnswer);
   $("submitAnswerBtn").addEventListener("click", checkAnswer);
   $("againBtn").addEventListener("click", () => grade("again"));
   $("hardBtn").addEventListener("click", () => grade("hard"));
@@ -1097,6 +1096,17 @@ function checkAnswer() {
   renderList();
 }
 
+function revealAnswer() {
+  const word = currentWord();
+  if (!word) return;
+  $("definitionBox").classList.remove("hidden");
+  $("quizFeedback").textContent = quizMode === "reverse"
+    ? `参考答案：${word.word}。请按真实熟练度选择“忘了、模糊、记住或很熟”。`
+    : `完整释义已显示。请按真实熟练度选择“忘了、模糊、记住或很熟”。`;
+  $("quizFeedback").classList.remove("ok", "warn");
+  $("checkBtn").textContent = "答案已显示";
+}
+
 function normalizeChecks(checks) {
   return { ...freshChecks(), ...(checks || {}) };
 }
@@ -1169,8 +1179,9 @@ function renderQuizFeedback(result) {
 }
 
 function resetQuizFeedback() {
-  $("quizFeedback").textContent = "先默写，再自查。";
+  $("quizFeedback").textContent = "可以先默写并提交批改，也可直接查看答案。";
   $("quizFeedback").classList.remove("ok", "warn");
+  $("checkBtn").textContent = "查看答案";
 }
 
 function nextAfter(id, previousList = filteredWords()) {
