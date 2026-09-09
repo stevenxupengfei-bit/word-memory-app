@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json" />
     <link rel="apple-touch-icon" href="icons/icon-192.png" />
     <title>记忆森林 · 单词复习</title>
-    <link rel="stylesheet" href="styles.css?v=20260909-mobile" />
+    <link rel="stylesheet" href="styles.css?v=20260909-sentence" />
   </head>
   <body>
     <section class="auth-screen" id="authScreen">
@@ -87,7 +87,6 @@
           <button class="tab active" data-filter="due">今日</button>
           <button class="tab" data-filter="new">新词</button>
           <button class="tab" data-filter="weak">薄弱</button>
-          <button class="tab" data-filter="favorite">收藏</button>
           <button class="tab" data-filter="all">全部</button>
         </div>
 
@@ -166,7 +165,7 @@
                 <div class="example-head">
                   <p class="label">简单例句</p>
                   <div class="example-actions">
-                    <button id="favoriteExampleBtn" type="button" aria-pressed="false">☆ 收藏</button>
+                    <button id="addExampleBtn" type="button">＋ 加入新词</button>
                     <button id="speakExampleBtn" type="button">🔊 听例句</button>
                   </div>
                 </div>
@@ -326,6 +325,6 @@ theft 盗窃；偷；赃物
       <p style="margin:0;line-height:1.7;padding-right:32px"></p>
     </aside>
     <script src="data/practical-examples.js?v=20260908"></script>
-    <script src="app.js?v=20260909-encouragement"></script>
+    <script src="app.js?v=20260909-sentence"></script>
   </body>
 </html>

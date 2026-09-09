@@ -149,7 +149,7 @@ function bindEvents() {
   $("easyBtn").addEventListener("click", () => grade("easy"));
   $("speakBtn").addEventListener("click", speakCurrent);
   $("speakExampleBtn").addEventListener("click", speakExample);
-  $("favoriteExampleBtn").addEventListener("click", toggleExampleFavorite);
+  $("addExampleBtn").addEventListener("click", addExampleToNewWords);
   $("voiceSelect").addEventListener("change", () => {
     localStorage.setItem(VOICE_KEY, $("voiceSelect").value);
     speakCurrent();
@@ -745,7 +745,6 @@ function freshProgress() {
     checks: freshChecks(),
     lastCheck: null,
     lastGrade: "new",
-    exampleFavorite: false,
   };
 }
 
@@ -815,7 +814,6 @@ function filteredWords() {
   if (filter === "due") list = dueWords();
   if (filter === "new") list = words.filter((word) => progress[word.id].seen === 0);
   if (filter === "weak") list = weakWords();
-  if (filter === "favorite") list = words.filter((word) => Boolean(progress[word.id].exampleFavorite));
   if (q) {
     list = list.filter((word) => `${word.word} ${word.definition}`.toLowerCase().includes(q));
   }
@@ -946,13 +944,14 @@ function renderCard() {
   const index = Math.max(0, list.findIndex((item) => item.id === word.id)) + 1;
   const reverse = quizMode === "reverse";
   const core = noteCore(word);
-  $("queueLabel").textContent = filter === "due" ? "今日队列" : filter === "new" ? "新词队列" : filter === "weak" ? "薄弱队列" : filter === "favorite" ? "收藏例句" : "全部词表";
+  const sentenceItem = word.kind === "sentence";
+  $("queueLabel").textContent = filter === "due" ? "今日队列" : filter === "new" ? "新词队列" : filter === "weak" ? "薄弱队列" : "全部词表";
   $("wordTitle").textContent = reverse ? core : word.word;
   $("promptLabel").textContent = reverse ? "中文核心义" : "单词";
   $("currentWord").textContent = reverse ? core : word.word;
-  $("partLine").textContent = `词性：${partOfSpeechText(word)}`;
+  $("partLine").textContent = sentenceItem ? "类型：英文例句" : `词性：${partOfSpeechText(word)}`;
   $("definitionText").textContent = reverse ? `${word.word}：${word.definition}` : word.definition;
-  $("meaningLabel").textContent = reverse ? "作答方向" : "中文释义";
+  $("meaningLabel").textContent = reverse ? "作答方向" : sentenceItem ? "中文翻译" : "中文释义";
   $("meaningText").textContent = reverse ? "写出对应英文单词或短语。" : chineseMeaning(word.definition);
   $("exampleText").textContent = exampleFor(word);
   $("exampleTranslation").textContent = exampleTranslationFor(word);
@@ -961,36 +960,70 @@ function renderCard() {
   $("forgetLine").textContent = `遗忘时间：${forgetText(progress[word.id])}`;
   renderMemorySignals(progress[word.id]);
   $("studyCard").classList.toggle("reverse-mode", reverse);
-  $("mnemonicBox").classList.toggle("hidden", reverse);
-  $("memoryPhotoFigure").classList.toggle("hidden", reverse);
+  $("mnemonicBox").classList.toggle("hidden", reverse || sentenceItem);
+  $("memoryPhotoFigure").classList.toggle("hidden", reverse || sentenceItem);
   $("speakBtn").disabled = reverse;
   $("speakExampleBtn").disabled = reverse;
-  const favorite = Boolean(progress[word.id].exampleFavorite);
-  $("favoriteExampleBtn").disabled = reverse;
-  $("favoriteExampleBtn").textContent = favorite ? "★ 已收藏" : "☆ 收藏";
-  $("favoriteExampleBtn").classList.toggle("active", favorite);
-  $("favoriteExampleBtn").setAttribute("aria-pressed", String(favorite));
+  const exampleAdded = Boolean(findExampleStudyItem(exampleFor(word)));
+  $("addExampleBtn").disabled = reverse || exampleAdded;
+  $("addExampleBtn").textContent = exampleAdded ? "✓ 已加入新词" : "＋ 加入新词";
+  $("addExampleBtn").classList.toggle("added", exampleAdded);
   $("exampleBox").classList.toggle("hidden", reverse || !exampleFor(word));
   document.querySelectorAll(".mode-btn").forEach((button) => button.classList.toggle("active", button.dataset.mode === quizMode));
   if (reverse) {
-    $("phoneticLine").textContent = "音标：答完再看，避免提示词形。";
+    $("phoneticLine").textContent = sentenceItem ? "英文句子：答完再看。" : "音标：答完再看，避免提示词形。";
+  } else if (sentenceItem) {
+    $("phoneticLine").textContent = "朗读：点击上方女声朗读整句。";
   } else {
     renderWordInfo(word);
     renderMemoryPhoto(word);
   }
 }
 
-function toggleExampleFavorite() {
+function findExampleStudyItem(sentence) {
+  const key = exampleKey(sentence);
+  if (!key) return null;
+  return words.find((item) => exampleKey(item.word) === key) || null;
+}
+
+async function addExampleToNewWords() {
   const word = currentWord();
   if (!word) return;
-  progress[word.id] ||= freshProgress();
-  progress[word.id].exampleFavorite = !progress[word.id].exampleFavorite;
-  save();
-  renderCard();
-  if (filter === "favorite") {
-    listPage = 1;
-    selectNext();
+  const sentence = exampleFor(word);
+  const translation = exampleTranslationFor(word);
+  if (!sentence || findExampleStudyItem(sentence)) return;
+  const item = {
+    id: `custom-example-${Date.now()}`,
+    word: sentence,
+    part: "sent.",
+    definition: translation || "收藏的英文例句",
+    source: "例句加入新词",
+    kind: "sentence",
+  };
+  const previousCustomWords = customWords;
+  const button = $("addExampleBtn");
+  button.disabled = true;
+  button.textContent = "正在加入…";
+  try {
+    customWords = [...customWords, item];
+    rebuildWords();
+    prepareProgress();
+    const email = String(currentUser?.email || "").toLowerCase();
+    if (email) localStorage.setItem(`${LOCAL_WORDS_KEY}:${email}`, JSON.stringify(customWords));
+    saveLocal();
+    if (currentUser?.cloud) await writeCloudData();
     render();
+  } catch (error) {
+    customWords = previousCustomWords;
+    delete progress[item.id];
+    rebuildWords();
+    prepareProgress();
+    const email = String(currentUser?.email || "").toLowerCase();
+    if (email) localStorage.setItem(`${LOCAL_WORDS_KEY}:${email}`, JSON.stringify(customWords));
+    saveLocal();
+    button.disabled = false;
+    button.textContent = "加入失败，请重试";
+    console.warn("Add example failed:", error.message);
   }
 }
 
@@ -1287,7 +1320,7 @@ function mnemonicFor(word) {
   }
   const pieces = term.includes(" ") ? term.split(" ") : term.split(/-/);
   const family = words
-    .filter((item) => item.word !== term && sameFamily(clean, item.word.toLowerCase()))
+    .filter((item) => item.kind !== "sentence" && item.word !== term && sameFamily(clean, item.word.toLowerCase()))
     .slice(0, 4)
     .map((item) => item.word);
   const affix = affixHint(clean);
