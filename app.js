@@ -280,7 +280,7 @@ function renderAuthMode() {
   document.querySelectorAll(".auth-tab").forEach((button) => button.classList.toggle("active", button.dataset.authMode === authMode));
   const messages = {
     login: "",
-    register: "为你或孩子输入各自邮箱和至少 6 位密码，即可建立独立学习档案。",
+    register: "输入邮箱和至少 6 位密码，即可建立独立学习档案。",
     code: "输入已注册手机号，获取验证码后即可登录。",
     reset: "用手机号验证码验证身份，然后设置新密码。"
   };
