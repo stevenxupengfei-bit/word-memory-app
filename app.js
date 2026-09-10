@@ -40,7 +40,7 @@ let remoteSavedRevision = 0;
 let remoteSaveInFlight = false;
 let duplicateCleanupArmed = false;
 let duplicateCleanupTimer = null;
-let answerRevealed = false;
+let answerRevealed = true;
 let photoSalt = Number(localStorage.getItem("word-memory-photo-salt") || "1");
 let activePhotoKey = "";
 let activeInfoKey = "";
@@ -144,7 +144,7 @@ function bindEvents() {
   $("memoryPhoto").addEventListener("load", () => {
     $("memoryPhoto").classList.remove("loading");
   });
-  $("checkBtn").addEventListener("click", revealAnswer);
+  $("checkBtn").addEventListener("click", toggleAnswer);
   $("submitAnswerBtn").addEventListener("click", checkAnswer);
   $("againBtn").addEventListener("click", () => grade("again"));
   $("hardBtn").addEventListener("click", () => grade("hard"));
@@ -179,8 +179,8 @@ function bindEvents() {
 function setQuizMode(mode) {
   quizMode = mode === "reverse" ? "reverse" : "forward";
   localStorage.setItem(QUIZ_MODE_KEY, quizMode);
-  answerRevealed = false;
-  $("definitionBox").classList.add("hidden");
+  answerRevealed = true;
+  $("definitionBox").classList.remove("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
   renderCard();
@@ -822,14 +822,14 @@ function filteredWords() {
 
 function selectNext() {
   const list = filteredWords();
-  answerRevealed = false;
+  answerRevealed = true;
   currentId = (list[0] || words[0])?.id || null;
 }
 
 function selectWord(id) {
-  answerRevealed = false;
+  answerRevealed = true;
   currentId = id;
-  $("definitionBox").classList.add("hidden");
+  $("definitionBox").classList.remove("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
   renderCard();
@@ -1089,8 +1089,8 @@ function grade(kind) {
   p.lastGrade = kind;
   save();
   maybeEncourage();
-  answerRevealed = false;
-  $("definitionBox").classList.add("hidden");
+  answerRevealed = true;
+  $("definitionBox").classList.remove("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
   currentId = nextAfter(word.id, previousList)?.id || filteredWords()[0]?.id || words[0]?.id || null;
@@ -1136,14 +1136,16 @@ function checkAnswer() {
   renderList();
 }
 
-function revealAnswer() {
+function toggleAnswer() {
   const word = currentWord();
   if (!word) return;
-  answerRevealed = true;
+  answerRevealed = !answerRevealed;
   updateAnswerVisibility();
-  $("quizFeedback").textContent = quizMode === "reverse"
-    ? `参考答案：${word.word}。请按真实熟练度选择“忘了、模糊、记住或很熟”。`
-    : `完整释义已显示。请按真实熟练度选择“忘了、模糊、记住或很熟”。`;
+  $("quizFeedback").textContent = answerRevealed
+    ? (quizMode === "reverse"
+      ? `参考答案：${word.word}。请按真实熟练度选择“忘了、模糊、记住或很熟”。`
+      : `中文答案已显示。请按真实熟练度选择“忘了、模糊、记住或很熟”。`)
+    : "中文答案已隐藏，请先在脑中回忆，再点击“查看答案”核对。";
   $("quizFeedback").classList.remove("ok", "warn");
 }
 
@@ -1152,7 +1154,7 @@ function updateAnswerVisibility() {
   $("definitionBox").classList.toggle("hidden", !answerRevealed);
   $("meaningText").classList.toggle("answer-concealed", concealChinese);
   $("exampleTranslation").classList.toggle("answer-concealed", concealChinese);
-  $("checkBtn").textContent = answerRevealed ? "答案已显示" : "查看答案";
+  $("checkBtn").textContent = answerRevealed ? "自查" : "查看答案";
 }
 
 function normalizeChecks(checks) {
@@ -1227,9 +1229,9 @@ function renderQuizFeedback(result) {
 }
 
 function resetQuizFeedback() {
-  $("quizFeedback").textContent = "可以先默写并提交批改，也可直接查看答案。";
+  $("quizFeedback").textContent = "中文答案默认显示；点击“自查”可隐藏，再点击“查看答案”核对。";
   $("quizFeedback").classList.remove("ok", "warn");
-  $("checkBtn").textContent = "查看答案";
+  $("checkBtn").textContent = answerRevealed ? "自查" : "查看答案";
 }
 
 function nextAfter(id, previousList = filteredWords()) {
