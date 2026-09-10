@@ -969,8 +969,8 @@ function renderCard() {
   $("speakBtn").disabled = reverse || !speechSupported;
   $("speakExampleBtn").disabled = reverse || !speechSupported;
   const exampleAdded = Boolean(findExampleStudyItem(exampleFor(word)));
-  $("addExampleBtn").disabled = reverse || exampleAdded;
-  $("addExampleBtn").textContent = exampleAdded ? "✓ 已加入新词" : "＋ 加入新词";
+  $("addExampleBtn").disabled = reverse;
+  $("addExampleBtn").textContent = exampleAdded ? "取消收藏" : "加入新词";
   $("addExampleBtn").classList.toggle("added", exampleAdded);
   $("exampleBox").classList.toggle("hidden", reverse || !exampleFor(word));
   document.querySelectorAll(".mode-btn").forEach((button) => button.classList.toggle("active", button.dataset.mode === quizMode));
@@ -987,7 +987,7 @@ function renderCard() {
 function findExampleStudyItem(sentence) {
   const key = exampleKey(sentence);
   if (!key) return null;
-  return words.find((item) => exampleKey(item.word) === key) || null;
+  return customWords.find((item) => item.kind === "sentence" && exampleKey(item.word) === key) || null;
 }
 
 async function addExampleToNewWords() {
@@ -995,8 +995,9 @@ async function addExampleToNewWords() {
   if (!word) return;
   const sentence = exampleFor(word);
   const translation = exampleTranslationFor(word);
-  if (!sentence || findExampleStudyItem(sentence)) return;
-  const item = {
+  if (!sentence) return;
+  const existing = findExampleStudyItem(sentence);
+  const item = existing || {
     id: `custom-example-${Date.now()}`,
     word: sentence,
     part: "sent.",
@@ -1004,12 +1005,18 @@ async function addExampleToNewWords() {
     source: "例句加入新词",
     kind: "sentence",
   };
-  const previousCustomWords = customWords;
+  const previousCustomWords = [...customWords];
+  const previousProgress = existing ? progress[existing.id] : null;
   const button = $("addExampleBtn");
   button.disabled = true;
-  button.textContent = "正在加入…";
+  button.textContent = existing ? "正在取消…" : "正在加入…";
   try {
-    customWords = [...customWords, item];
+    if (existing) {
+      customWords = customWords.filter((entry) => entry.id !== existing.id);
+      delete progress[existing.id];
+    } else {
+      customWords = [...customWords, item];
+    }
     rebuildWords();
     prepareProgress();
     const email = String(currentUser?.email || "").toLowerCase();
@@ -1019,15 +1026,16 @@ async function addExampleToNewWords() {
     render();
   } catch (error) {
     customWords = previousCustomWords;
-    delete progress[item.id];
+    if (existing && previousProgress) progress[existing.id] = previousProgress;
+    if (!existing) delete progress[item.id];
     rebuildWords();
     prepareProgress();
     const email = String(currentUser?.email || "").toLowerCase();
     if (email) localStorage.setItem(`${LOCAL_WORDS_KEY}:${email}`, JSON.stringify(customWords));
     saveLocal();
     button.disabled = false;
-    button.textContent = "加入失败，请重试";
-    console.warn("Add example failed:", error.message);
+    button.textContent = existing ? "取消失败，请重试" : "加入失败，请重试";
+    console.warn("Toggle example failed:", error.message);
   }
 }
 
