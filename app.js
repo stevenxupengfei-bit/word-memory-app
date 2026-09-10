@@ -4,7 +4,6 @@ const REFRESH_TOKEN_KEY = "word-memory-refresh-token";
 const LOCAL_ACCOUNTS_KEY = "word-memory-local-accounts-v2";
 const LOCAL_WORDS_KEY = "word-memory-local-words-v2";
 const QUIZ_MODE_KEY = "word-memory-quiz-mode";
-const VOICE_KEY = "word-memory-voice-name-v2";
 const OCR_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js";
 const SUPABASE_URL = "https://waqwarfyocovhaxkdxoy.supabase.co";
 const SUPABASE_KEY = "sb_publishable_8BTKvF039SJk1GphJBw_3A_ARhoWnii";
@@ -36,8 +35,12 @@ let quizMode = localStorage.getItem(QUIZ_MODE_KEY) || "forward";
 let currentUser = null;
 let token = localStorage.getItem(TOKEN_KEY) || "";
 let saveTimer = null;
+let remoteSaveRevision = 0;
+let remoteSavedRevision = 0;
+let remoteSaveInFlight = false;
 let duplicateCleanupArmed = false;
 let duplicateCleanupTimer = null;
+let answerRevealed = false;
 let photoSalt = Number(localStorage.getItem("word-memory-photo-salt") || "1");
 let activePhotoKey = "";
 let activeInfoKey = "";
@@ -150,10 +153,6 @@ function bindEvents() {
   $("speakBtn").addEventListener("click", speakCurrent);
   $("speakExampleBtn").addEventListener("click", speakExample);
   $("addExampleBtn").addEventListener("click", addExampleToNewWords);
-  $("voiceSelect").addEventListener("change", () => {
-    localStorage.setItem(VOICE_KEY, $("voiceSelect").value);
-    speakCurrent();
-  });
   $("searchInput").addEventListener("input", () => {
     listPage = 1;
     renderList();
@@ -180,6 +179,7 @@ function bindEvents() {
 function setQuizMode(mode) {
   quizMode = mode === "reverse" ? "reverse" : "forward";
   localStorage.setItem(QUIZ_MODE_KEY, quizMode);
+  answerRevealed = false;
   $("definitionBox").classList.add("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
@@ -822,10 +822,12 @@ function filteredWords() {
 
 function selectNext() {
   const list = filteredWords();
+  answerRevealed = false;
   currentId = (list[0] || words[0])?.id || null;
 }
 
 function selectWord(id) {
+  answerRevealed = false;
   currentId = id;
   $("definitionBox").classList.add("hidden");
   $("answerInput").value = "";
@@ -955,6 +957,7 @@ function renderCard() {
   $("meaningText").textContent = reverse ? "写出对应英文单词或短语。" : chineseMeaning(word.definition);
   $("exampleText").textContent = exampleFor(word);
   $("exampleTranslation").textContent = exampleTranslationFor(word);
+  updateAnswerVisibility();
   $("mnemonicText").innerHTML = mnemonicFor(word).map((line) => `<span>${escapeHtml(line)}</span>`).join("");
   $("cardIndex").textContent = `${index || 1} / ${list.length || words.length}`;
   $("forgetLine").textContent = `遗忘时间：${forgetText(progress[word.id])}`;
@@ -962,8 +965,9 @@ function renderCard() {
   $("studyCard").classList.toggle("reverse-mode", reverse);
   $("mnemonicBox").classList.toggle("hidden", reverse || sentenceItem);
   $("memoryPhotoFigure").classList.toggle("hidden", reverse || sentenceItem);
-  $("speakBtn").disabled = reverse;
-  $("speakExampleBtn").disabled = reverse;
+  const speechSupported = "speechSynthesis" in window;
+  $("speakBtn").disabled = reverse || !speechSupported;
+  $("speakExampleBtn").disabled = reverse || !speechSupported;
   const exampleAdded = Boolean(findExampleStudyItem(exampleFor(word)));
   $("addExampleBtn").disabled = reverse || exampleAdded;
   $("addExampleBtn").textContent = exampleAdded ? "✓ 已加入新词" : "＋ 加入新词";
@@ -1085,6 +1089,7 @@ function grade(kind) {
   p.lastGrade = kind;
   save();
   maybeEncourage();
+  answerRevealed = false;
   $("definitionBox").classList.add("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
@@ -1124,6 +1129,8 @@ function checkAnswer() {
   };
   if (!result.matched) p.misses = (p.misses || 0) + 1;
   save();
+  answerRevealed = true;
+  updateAnswerVisibility();
   renderQuizFeedback(result);
   renderCoach();
   renderList();
@@ -1132,12 +1139,20 @@ function checkAnswer() {
 function revealAnswer() {
   const word = currentWord();
   if (!word) return;
-  $("definitionBox").classList.remove("hidden");
+  answerRevealed = true;
+  updateAnswerVisibility();
   $("quizFeedback").textContent = quizMode === "reverse"
     ? `参考答案：${word.word}。请按真实熟练度选择“忘了、模糊、记住或很熟”。`
     : `完整释义已显示。请按真实熟练度选择“忘了、模糊、记住或很熟”。`;
   $("quizFeedback").classList.remove("ok", "warn");
-  $("checkBtn").textContent = "答案已显示";
+}
+
+function updateAnswerVisibility() {
+  const concealChinese = quizMode !== "reverse" && !answerRevealed;
+  $("definitionBox").classList.toggle("hidden", !answerRevealed);
+  $("meaningText").classList.toggle("answer-concealed", concealChinese);
+  $("exampleTranslation").classList.toggle("answer-concealed", concealChinese);
+  $("checkBtn").textContent = answerRevealed ? "答案已显示" : "查看答案";
 }
 
 function normalizeChecks(checks) {
@@ -1229,6 +1244,7 @@ function nextAfter(id, previousList = filteredWords()) {
 
 function save() {
   saveLocal();
+  remoteSaveRevision += 1;
   queueRemoteSave();
 }
 
@@ -1240,22 +1256,34 @@ function saveLocal() {
 function queueRemoteSave() {
   if (!token || currentUser?.local) return;
   window.clearTimeout(saveTimer);
-  saveTimer = window.setTimeout(saveRemoteNow, 350);
+  saveTimer = window.setTimeout(saveRemoteNow, 180);
 }
 
 async function saveRemoteNow() {
   if (!token || currentUser?.local) return;
+  if (remoteSaveInFlight) return;
+  remoteSaveInFlight = true;
   try {
-    if (currentUser?.cloud) {
-      await writeCloudData();
-    } else {
-      await api("/api/progress", {
-        method: "PUT",
-        body: { progress },
-      });
-    }
+    do {
+      const savingRevision = remoteSaveRevision;
+      if (currentUser?.cloud) {
+        await writeCloudData();
+      } else {
+        await api("/api/progress", {
+          method: "PUT",
+          body: { progress },
+        });
+      }
+      remoteSavedRevision = savingRevision;
+    } while (remoteSavedRevision < remoteSaveRevision);
   } catch (error) {
     console.warn("Progress sync failed:", error.message);
+  } finally {
+    remoteSaveInFlight = false;
+    if (remoteSavedRevision < remoteSaveRevision) {
+      window.clearTimeout(saveTimer);
+      saveTimer = window.setTimeout(saveRemoteNow, 1800);
+    }
   }
 }
 
@@ -1376,10 +1404,10 @@ function speakText(text) {
   utterance.lang = "en-US";
   utterance.rate = 0.93;
   utterance.pitch = 1;
-  const selected = englishVoices.find((voice) => voice.name === $("voiceSelect").value) || preferredVoice(englishVoices);
+  const selected = googleUsVoice(englishVoices);
   if (selected) {
     utterance.voice = selected;
-    utterance.lang = selected.lang;
+    utterance.lang = "en-US";
   }
   speechSynthesis.cancel();
   speechSynthesis.speak(utterance);
@@ -1387,44 +1415,24 @@ function speakText(text) {
 
 function setupVoices() {
   if (!("speechSynthesis" in window)) {
-    $("voiceSelect").innerHTML = '<option value="">此设备不支持语音</option>';
-    $("voiceSelect").disabled = true;
+    $("speakBtn").disabled = true;
+    $("speakExampleBtn").disabled = true;
     return;
   }
   const refresh = () => {
-    englishVoices = speechSynthesis.getVoices().filter((voice) => /^en[-_]/i.test(voice.lang) && !/albert|bad news|bahh|bells|boing|bubbles|cellos|organ|trinoids|whisper|wobble|zarvox|jester|junior|grandma|grandpa/i.test(voice.name)).sort((a, b) => voiceQuality(b) - voiceQuality(a));
-    if (!englishVoices.length) return;
-    const saved = localStorage.getItem(VOICE_KEY);
-    const preferred = englishVoices.find((voice) => voice.name === saved) || preferredVoice(englishVoices);
-    const preferredNames = new Set(femaleVoiceCandidates(englishVoices).map((voice) => voice.name));
-    $("voiceSelect").innerHTML = englishVoices.map((voice) => {
-      const natural = /Google UK English Female/i.test(voice.name) ? "推荐女声 · " : preferredNames.has(voice.name) ? "女声 · " : "系统声线 · ";
-      return `<option value="${escapeHtml(voice.name)}">${natural}${escapeHtml(voice.name)} (${escapeHtml(voice.lang)})</option>`;
-    }).join("");
-    if (preferred) {
-      $("voiceSelect").value = preferred.name;
-      localStorage.setItem(VOICE_KEY, preferred.name);
-    }
+    englishVoices = speechSynthesis.getVoices()
+      .filter((voice) => /^en[-_]/i.test(voice.lang) && !/albert|bad news|bahh|bells|boing|bubbles|cellos|organ|trinoids|whisper|wobble|zarvox|jester|junior|grandma|grandpa/i.test(voice.name));
   };
   refresh();
   speechSynthesis.addEventListener?.("voiceschanged", refresh);
 }
 
-function femaleVoiceCandidates(voices) {
-  const names = /female|samantha|ava|allison|susan|karen|moira|tessa|fiona|serena|zoe|victoria|martha|monica|salli|joanna|kendra|aria|jenny|emma|libby|sonia|zira/i;
-  return voices.filter((voice) => names.test(voice.name));
-}
-
-function preferredVoice(voices) {
-  const sorted = [...voices].sort((a, b) => voiceQuality(b) - voiceQuality(a));
-  const female = femaleVoiceCandidates(sorted);
-  return female[0] || sorted[0];
-}
-
-function voiceQuality(voice) {
-  if (/Google UK English Female/i.test(voice.name)) return 1000;
-  const female = femaleVoiceCandidates([voice]).length > 0;
-  return (female ? 100 : 0) + (/premium|enhanced|natural|neural/i.test(voice.name) ? 500 : 0) + (/samantha|ava|allison|zoe/i.test(voice.name) ? 50 : 0);
+function googleUsVoice(voices) {
+  return voices.find((voice) => /^Google US English$/i.test(voice.name))
+    || voices.find((voice) => /Google.*US.*English/i.test(voice.name))
+    || voices.find((voice) => /Google/i.test(voice.name) && /^en[-_]US$/i.test(voice.lang))
+    || voices.find((voice) => /^en[-_]US$/i.test(voice.lang))
+    || null;
 }
 
 function exampleFor(word) {
