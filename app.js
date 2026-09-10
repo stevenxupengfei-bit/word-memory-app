@@ -950,8 +950,8 @@ function renderCard() {
   $("promptLabel").textContent = reverse ? "中文核心义" : "单词";
   $("currentWord").textContent = reverse ? core : word.word;
   $("partLine").textContent = sentenceItem ? "类型：英文例句" : `词性：${partOfSpeechText(word)}`;
-  $("meaningLabel").textContent = reverse ? "作答方向" : sentenceItem ? "中文翻译" : "中文释义";
-  $("meaningText").textContent = reverse ? "写出对应英文单词或短语。" : word.definition;
+  $("meaningLabel").textContent = reverse ? "中英文答案" : sentenceItem ? "中文翻译" : "中文释义";
+  $("meaningText").textContent = reverse ? `${word.word} · ${word.definition}` : word.definition;
   $("exampleText").textContent = exampleFor(word);
   $("exampleTranslation").textContent = exampleTranslationFor(word);
   updateAnswerVisibility();
@@ -1154,9 +1154,9 @@ function toggleAnswer() {
 }
 
 function updateAnswerVisibility() {
-  const concealChinese = quizMode !== "reverse" && !answerRevealed;
-  $("meaningText").classList.toggle("answer-concealed", concealChinese);
-  $("exampleTranslation").classList.toggle("answer-concealed", concealChinese);
+  const concealAnswer = !answerRevealed;
+  $("meaningText").classList.toggle("answer-concealed", concealAnswer);
+  $("exampleTranslation").classList.toggle("answer-concealed", quizMode !== "reverse" && concealAnswer);
   $("checkBtn").textContent = answerRevealed ? "自查" : "查看答案";
 }
 
