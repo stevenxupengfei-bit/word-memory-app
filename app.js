@@ -180,7 +180,6 @@ function setQuizMode(mode) {
   quizMode = mode === "reverse" ? "reverse" : "forward";
   localStorage.setItem(QUIZ_MODE_KEY, quizMode);
   answerRevealed = true;
-  $("definitionBox").classList.remove("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
   renderCard();
@@ -829,7 +828,6 @@ function selectNext() {
 function selectWord(id) {
   answerRevealed = true;
   currentId = id;
-  $("definitionBox").classList.remove("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
   renderCard();
@@ -952,9 +950,8 @@ function renderCard() {
   $("promptLabel").textContent = reverse ? "中文核心义" : "单词";
   $("currentWord").textContent = reverse ? core : word.word;
   $("partLine").textContent = sentenceItem ? "类型：英文例句" : `词性：${partOfSpeechText(word)}`;
-  $("definitionText").textContent = reverse ? `${word.word}：${word.definition}` : word.definition;
   $("meaningLabel").textContent = reverse ? "作答方向" : sentenceItem ? "中文翻译" : "中文释义";
-  $("meaningText").textContent = reverse ? "写出对应英文单词或短语。" : chineseMeaning(word.definition);
+  $("meaningText").textContent = reverse ? "写出对应英文单词或短语。" : word.definition;
   $("exampleText").textContent = exampleFor(word);
   $("exampleTranslation").textContent = exampleTranslationFor(word);
   updateAnswerVisibility();
@@ -1098,7 +1095,6 @@ function grade(kind) {
   save();
   maybeEncourage();
   answerRevealed = true;
-  $("definitionBox").classList.remove("hidden");
   $("answerInput").value = "";
   resetQuizFeedback();
   currentId = nextAfter(word.id, previousList)?.id || filteredWords()[0]?.id || words[0]?.id || null;
@@ -1159,7 +1155,6 @@ function toggleAnswer() {
 
 function updateAnswerVisibility() {
   const concealChinese = quizMode !== "reverse" && !answerRevealed;
-  $("definitionBox").classList.toggle("hidden", !answerRevealed);
   $("meaningText").classList.toggle("answer-concealed", concealChinese);
   $("exampleTranslation").classList.toggle("answer-concealed", concealChinese);
   $("checkBtn").textContent = answerRevealed ? "自查" : "查看答案";
