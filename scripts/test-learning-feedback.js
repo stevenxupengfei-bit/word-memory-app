@@ -20,7 +20,13 @@ for(const [word,example] of Object.entries(practical)) {
   assert.equal(vm.runInContext('exampleTranslationFor(testWord)',ctx),example.zh);
   assert.doesNotMatch(example.en,/learning the word/i);
 }
-assert.equal(vm.runInContext(`exampleFor({word:'unknown',example:'I am learning the word "".'})`,ctx),'');
+ctx.testWord={word:'deficit',definition:'n.亏损，赤字，不足额'};
+assert.equal(vm.runInContext('exampleFor(testWord)',ctx),'The deficit is important in this context.');
+assert.equal(vm.runInContext('exampleTranslationFor(testWord)',ctx),'亏损在这个语境中很重要。');
+ctx.testWord={word:'carefully',definition:'adv.小心地，仔细地',example:'I am learning the word "".'};
+assert.equal(vm.runInContext('exampleFor(testWord)',ctx),'She answered carefully.');
+assert.equal(vm.runInContext('exampleTranslationFor(testWord)',ctx),'她小心地回答。');
+assert.doesNotMatch(vm.runInContext('exampleFor(testWord)',ctx),/learning the word/i);
 assert.equal(vm.runInContext(`partOfSpeechText({definition:'adj. 漂亮的；n. 美人'})`,ctx),'adj. / n.');
 assert.equal(vm.runInContext(`partOfSpeechText({part:'及物动词 / 名词'})`,ctx),'vt. / n.');
 vm.runInContext(`words=[{id:'a'},{id:'b'},{id:'c'},{id:'d'}];progress={a:{lastReviewed:Date.now(),lastGrade:'good'},b:{lastReviewed:Date.now(),lastGrade:'hard'},c:{lastReviewed:Date.now()-8*dayMs,lastGrade:'easy'},d:{lastReviewed:Date.now(),lastGrade:'again'},other:{lastReviewed:Date.now(),lastGrade:'good'}}`,ctx);
